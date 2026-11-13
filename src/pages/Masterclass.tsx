@@ -14,7 +14,6 @@ import {
   Bookmark,
   LayoutGrid,
   List as ListIcon,
-  MapPin,
   Briefcase,
   Eye,
   X,
@@ -41,6 +40,8 @@ import EditMasterclassContentModal from '../components/EditMasterclassContentMod
 import ContentCountdownTimer from '../components/ContentCountdownTimer';
 import VideoUploadWithMuxForMasterclass from '../components/VideoUploadWithMuxForMasterclass';
 import EnrollmentModal from '../components/EnrollmentModal';
+import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
+import { PERSONAL_GROWTH_BLUEPRINTS, type CourseCurriculum, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
 
 type ViewMode = 'courses' | 'workshops' | 'learning' | 'teaching' | 'mentorship';
 type LayoutMode = 'grid' | 'list';
@@ -61,19 +62,31 @@ type ContentItem = {
   learning_outcomes?: string[];
   features?: string[];
   lessons_count?: number;
+  learning_format?: string;
+  curriculum?: CourseCurriculum;
+  content_url?: string | null;
+  status?: string;
+  deleted_at?: string | null;
+  auto_delete_at?: string | null;
+  saved?: boolean;
+  course_price?: number;
+  course_currency?: string;
+  display_order?: number;
+  created_at?: string;
 };
 
 type Workshop = {
-  id: number;
+  id: string;
   title: string;
-  date: string;
-  time: string;
   duration: string;
   instructor: string;
-  spots: number;
-  price: number;
+  format: string;
+  track: string;
   category: string;
   location: string;
+  description: string;
+  lessonsCount: number;
+  blueprintId: string;
 };
 
 export default function Masterclass() {
@@ -85,7 +98,7 @@ export default function Masterclass() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('courses');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState('personal-growth');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'all' | 'popular' | 'newest' | 'highest-rated'>('all');
   const [bookmarkedCourseIds, setBookmarkedCourseIds] = useState<string[]>([]);
@@ -98,7 +111,13 @@ export default function Masterclass() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('personal-growth');
+  const [uploadLearningFormat, setUploadLearningFormat] = useState('Self-paced course');
+  const [uploadCurriculum, setUploadCurriculum] = useState<CourseCurriculum>({ version: 1, lessons: [], resources: [] });
+  const [uploadPrerequisites, setUploadPrerequisites] = useState('');
+  const [uploadTargetAudience, setUploadTargetAudience] = useState('');
+  const [uploadCourseDuration, setUploadCourseDuration] = useState('');
+  const [uploadResourceFiles, setUploadResourceFiles] = useState<File[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -154,6 +173,14 @@ export default function Masterclass() {
     video: ['video/mp4', 'video/webm', 'video/quicktime'],
     audio: ['audio/mpeg', 'audio/wav', 'audio/ogg'],
   };
+  const ALLOWED_RESOURCE_TYPES = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+  ]);
 
   const courseCategories = useMemo(
     () => [
@@ -175,7 +202,8 @@ export default function Masterclass() {
       'AI-research-&-innovation',
       'business-development',
       'professional-development',
-      'personal-development'
+      'personal-development',
+      'personal-growth'
     ],
     []
   );
@@ -541,6 +569,37 @@ export default function Masterclass() {
     if (droppedFile) handleUploadThumbnailSelect(droppedFile);
   };
 
+  const applyGrowthBlueprint = (blueprint: PersonalGrowthBlueprint) => {
+    if (!user) {
+      navigate('/signin');
+      return;
+    }
+
+    setUploadTitle(blueprint.title);
+    setUploadDescription(blueprint.description);
+    setUploadCategory('personal-growth');
+    setUploadLearningFormat(blueprint.learning_format);
+    setUploadCurriculum(blueprint.curriculum);
+    setUploadPrerequisites(blueprint.prerequisites);
+    setUploadTargetAudience(blueprint.target_audience);
+    setUploadCourseDuration(blueprint.duration);
+    setUploadLevel(blueprint.level);
+    setUploadLearningObjectives(blueprint.learning_outcomes);
+    setUploadFeatures(blueprint.features);
+    setUploadLessons(String(blueprint.curriculum.lessons.length));
+    setUploadThumbnailMode('url');
+    setUploadThumbnailUrl(blueprint.thumbnail_url);
+    setUploadVideoMode('upload');
+    setUploadVideoPlaybackId(null);
+    setUploadVideoId(null);
+    setUploadVideoDuration(null);
+    setUploadResourceFiles([]);
+    setUploadPrice(0);
+    setUploadCurrency('UGX');
+    setUploadError(null);
+    setShowUploadModal(true);
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -554,19 +613,10 @@ export default function Masterclass() {
       return;
     }
 
-    // Validate video (either uploaded or URL)
     let finalVideoUrl = '';
-    if (uploadVideoMode === 'upload') {
-      if (!uploadVideoPlaybackId || !uploadVideoId) {
-        setUploadError('Please upload a video');
-        return;
-      }
+    if (uploadVideoMode === 'upload' && uploadVideoPlaybackId && uploadVideoId) {
       finalVideoUrl = `https://stream.mux.com/${uploadVideoPlaybackId}.m3u8`;
-    } else {
-      if (!uploadVideoUrl.trim()) {
-        setUploadError('Please enter a video URL');
-        return;
-      }
+    } else if (uploadVideoMode === 'url' && uploadVideoUrl.trim()) {
       try {
         new URL(uploadVideoUrl);
         finalVideoUrl = uploadVideoUrl;
@@ -612,6 +662,16 @@ export default function Masterclass() {
         finalThumbnailUrl = thumbnailUrl;
       }
 
+      const uploadedResources = await Promise.all(uploadResourceFiles.map(async (file, index) => {
+        const { publicUrl, error } = await uploadToB2(file, `masterclass_resources/${user.id}/${index}`);
+        if (error) throw new Error(error);
+        return { title: file.name, url: publicUrl, type: 'document' as const };
+      }));
+      const finalCurriculum = {
+        ...uploadCurriculum,
+        resources: [...uploadCurriculum.resources, ...uploadedResources],
+      };
+
       const muxStreamUrl = finalVideoUrl;
 
       const { error: insertError } = await supabase.from('masterclass_page_content').insert([
@@ -621,14 +681,18 @@ export default function Masterclass() {
           creator: profile.name,
           description: uploadDescription || null,
           thumbnail_url: finalThumbnailUrl,
-          content_url: muxStreamUrl,
+          content_url: muxStreamUrl || null,
           type: 'course-material',
           category: uploadCategory || null,
-          duration: uploadVideoMode === 'upload' ? uploadVideoDuration : null,
+          duration: uploadVideoDuration || uploadCourseDuration || null,
           level: uploadLevel,
           learning_outcomes: uploadLearningObjectives,
           features: uploadFeatures,
-          lessons_count: parseInt(uploadLessons) || 0,
+          lessons_count: uploadCurriculum.lessons.length || parseInt(uploadLessons) || 0,
+          learning_format: uploadLearningFormat,
+          curriculum: finalCurriculum,
+          prerequisites: uploadPrerequisites || null,
+          target_audience: uploadTargetAudience || null,
           video_upload_id: uploadVideoMode === 'upload' ? uploadVideoId : null,
           course_price: uploadPrice || 0,
           course_currency: uploadCurrency,
@@ -650,7 +714,13 @@ export default function Masterclass() {
       setUploadPreview(null);
       setUploadThumbnail(null);
       setUploadThumbnailPreview(null);
-      setUploadCategory('');
+      setUploadResourceFiles([]);
+      setUploadCategory('personal-growth');
+      setUploadLearningFormat('Self-paced course');
+      setUploadCurriculum({ version: 1, lessons: [], resources: [] });
+      setUploadPrerequisites('');
+      setUploadTargetAudience('');
+      setUploadCourseDuration('');
       setUploadLevel('All Levels');
       setUploadLearningObjectives([]);
       setUploadLearningObjectiveInput('');
@@ -680,44 +750,21 @@ export default function Masterclass() {
   };
 
   const workshops = useMemo<Workshop[]>(
-    () => [
-      {
-        id: 1,
-        title: 'Creative Bootcamp',
-        date: 'March 15, 2026',
-        time: '2:00 PM EAT',
-        duration: '3 hours',
-        instructor: 'Alex Chen',
-        spots: 25,
-        price: 185000,
-        category: 'digital-marketing',
-        location: 'Kampala Creative Hub'
-      },
-      {
-        id: 2,
-        title: 'Personal Branding Workshop',
-        date: 'June 20, 2026',
-        time: '10:00 AM EAT',
-        duration: '4 hours',
-        instructor: 'Maya Patel',
-        spots: 15,
-        price: 300000,
-        category: 'professional-development',
-        location: 'Virtual (Live)'
-      },
-      {
-        id: 3,
-        title: 'Litflex - Multimedia Analytica',
-        date: 'June 5, 2026',
-        time: '4:00 PM EAT',
-        duration: '3 hours',
-        instructor: 'Rouje Gerard',
-        spots: 30,
-        price: 220000,
-        category: 'critical-media-literacy',
-        location: 'Kampala Cine Arena'
-      }
-    ],
+    () => PERSONAL_GROWTH_BLUEPRINTS
+      .filter((blueprint) => ['Applied workshop', 'Guided class'].includes(blueprint.learning_format))
+      .map((blueprint) => ({
+        id: blueprint.id,
+        title: blueprint.title,
+        duration: blueprint.duration,
+        instructor: 'Personal Growth Studio',
+        format: blueprint.learning_format,
+        track: blueprint.track,
+        category: 'personal-growth',
+        location: 'Online',
+        description: blueprint.description,
+        lessonsCount: blueprint.curriculum.lessons.length,
+        blueprintId: blueprint.id,
+      })),
     []
   );
 
@@ -1073,7 +1120,7 @@ export default function Masterclass() {
           <div>
             <h1 className="text-4xl font-playfair font-bold text-white mb-2">Masterclass</h1>
             <p className="text-gray-300">
-              Stand out with a certificate for your skills and the support of industry experts
+              Practical learning for self-awareness, resilience, habits, decision-making, and stronger relationships.
             </p>
           </div>
 
@@ -1179,7 +1226,9 @@ export default function Masterclass() {
         </div>
 
         {viewMode === 'courses' && (
-          <div className={courseContainerClass}>
+          <>
+            <PersonalGrowthShowcase onPrepare={applyGrowthBlueprint} />
+            <div className={courseContainerClass}>
             {sortedCourses.length > 0 ? (
               sortedCourses.map((course) => {
                 const isBookmarked = bookmarkedCourseIds.includes(course.id);
@@ -1307,40 +1356,37 @@ export default function Masterclass() {
                 No courses found. Try adjusting your search or filters.
               </div>
             ) : null}
-          </div>
+            </div>
+          </>
         )}
 
         {viewMode === 'workshops' && (
           <div className={workshopContainerClass}>
-            {filteredWorkshops.map((workshop) => (
-              <div
-                key={workshop.id}
-                className={`glass-effect rounded-2xl overflow-hidden hover-lift transition-all p-6 ${
-                  layoutMode === 'list' ? 'md:flex md:items-center md:justify-between' : ''
-                }`}
-              >
-                <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{workshop.title}</h3>
-                  <div className="text-gray-300 text-sm space-y-1">
-                    <div>{workshop.date} at {workshop.time}</div>
-                    <div>{workshop.duration} • {workshop.spots} spots left</div>
-                    <div>by {workshop.instructor}</div>
+            {filteredWorkshops.map((workshop) => {
+              const blueprint = PERSONAL_GROWTH_BLUEPRINTS.find((item) => item.id === workshop.blueprintId);
+              return (
+                <article key={workshop.id} className="glass-effect rounded-2xl p-6 hover-lift transition-all">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-purple-400/20 px-3 py-1 text-xs font-medium text-purple-200">{workshop.track}</span>
+                    <span className="rounded-full bg-rose-400/20 px-3 py-1 text-xs font-medium text-rose-200">{workshop.format}</span>
                   </div>
-                </div>
-                <div className="mt-4 md:mt-0 md:text-right">
-                  <div className="flex items-center justify-start md:justify-end gap-2 text-sm text-gray-300 mb-2">
-                    <MapPin className="w-4 h-4" />
+                  <h3 className="text-xl font-semibold text-white">{workshop.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-300">{workshop.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400">
+                    <span>{workshop.lessonsCount} guided lessons</span>
+                    <span>{workshop.duration}</span>
                     <span>{workshop.location}</span>
                   </div>
-                  <div className="flex items-center justify-between md:justify-end md:gap-4">
-                    <span className="text-rose-400 font-bold">UGX --</span>
-                    <button className="px-4 py-2 bg-gradient-to-r from-rose-500 to-purple-600 text-white text-sm rounded-lg hover:shadow-lg transition-all">
-                      Register
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => blueprint && applyGrowthBlueprint(blueprint)}
+                    className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 md:w-auto md:min-w-64"
+                  >
+                    Prefill this class in Supabase <ArrowRight className="h-4 w-4" />
+                  </button>
+                </article>
+              );
+            })}
             {filteredWorkshops.length === 0 && (
               <div className="glass-effect rounded-2xl p-8 text-center text-gray-300">
                 No workshops match your filters right now.
@@ -1561,6 +1607,20 @@ export default function Masterclass() {
               </button>
             </div>
 
+            <div className="mb-8 grid gap-6 md:grid-cols-2">
+              {PERSONAL_GROWTH_BLUEPRINTS.filter((blueprint) => blueprint.learning_format === 'Mentorship series').map((blueprint) => (
+                <article key={blueprint.id} className="glass-effect rounded-2xl p-6">
+                  <span className="rounded-full bg-purple-400/20 px-3 py-1 text-xs font-medium text-purple-200">{blueprint.track}</span>
+                  <h3 className="mt-4 text-xl font-semibold text-white">{blueprint.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-300">{blueprint.description}</p>
+                  <p className="mt-4 text-sm text-gray-400">{blueprint.duration} · {blueprint.curriculum.lessons.length} guided sessions</p>
+                  <button type="button" onClick={() => applyGrowthBlueprint(blueprint)} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white md:w-auto md:min-w-64">
+                    Prefill mentorship series in Supabase <ArrowRight className="h-4 w-4" />
+                  </button>
+                </article>
+              ))}
+            </div>
+
             <div className="grid md:grid-cols-2 gap-6">
               <div className="glass-effect p-6 rounded-xl">
                 <Award className="w-10 h-10 text-rose-400 mb-3" />
@@ -1652,9 +1712,12 @@ export default function Masterclass() {
       {/* Upload Content Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-effect p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="glass-effect p-6 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-white">Upload Course Material</h3>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Create a Personal Growth course</h3>
+                <p className="mt-1 text-sm text-gray-400">Review the prefilled course and lesson plan, then submit it to Supabase to publish.</p>
+              </div>
               <button
                 onClick={() => {
                   setShowUploadModal(false);
@@ -1664,9 +1727,15 @@ export default function Masterclass() {
                   setUploadPreview(null);
                   setUploadThumbnail(null);
                   setUploadThumbnailPreview(null);
+                  setUploadResourceFiles([]);
                   setUploadVideoPlaybackId(null);
                   setUploadVideoId(null);
-                  setUploadCategory('');
+                  setUploadCategory('personal-growth');
+                  setUploadLearningFormat('Self-paced course');
+                  setUploadCurriculum({ version: 1, lessons: [], resources: [] });
+                  setUploadPrerequisites('');
+                  setUploadTargetAudience('');
+                  setUploadCourseDuration('');
                   setUploadLevel('All Levels');
                   setUploadLearningObjectives([]);
                   setUploadLearningObjectiveInput('');
@@ -1715,6 +1784,91 @@ export default function Masterclass() {
                 />
               </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Learning format</label>
+                  <select value={uploadLearningFormat} onChange={(e) => setUploadLearningFormat(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white">
+                    <option>Self-paced course</option>
+                    <option>Guided class</option>
+                    <option>Applied workshop</option>
+                    <option>Mentorship series</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Estimated duration</label>
+                  <input value={uploadCourseDuration} onChange={(e) => setUploadCourseDuration(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" placeholder="e.g. 6 lessons · approximately 3 hours" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Prerequisites</label>
+                  <textarea rows={3} value={uploadPrerequisites} onChange={(e) => setUploadPrerequisites(e.target.value)} className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Target audience</label>
+                  <textarea rows={3} value={uploadTargetAudience} onChange={(e) => setUploadTargetAudience(e.target.value)} className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" />
+                </div>
+              </div>
+
+              <details className="rounded-xl border border-purple-300/20 bg-purple-300/5 p-4" open={uploadCurriculum.lessons.length > 0}>
+                <summary className="cursor-pointer font-semibold text-white">Lesson plan ({uploadCurriculum.lessons.length} lessons) — click to review</summary>
+                {uploadCurriculum.lessons.length > 0 ? (
+                  <ol className="mt-4 space-y-3">
+                    {uploadCurriculum.lessons.map((lesson, index) => (
+                      <li key={lesson.title} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <h4 className="font-medium text-white">{index + 1}. {lesson.title}</h4>
+                          <span className="text-xs text-gray-400">{lesson.duration}</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-gray-300">{lesson.description}</p>
+                        <p className="mt-2 text-sm leading-6 text-purple-200"><span className="font-semibold">Practice:</span> {lesson.practice}</p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p className="mt-3 text-sm text-gray-400">Choose a curated blueprint to prefill the complete lesson plan.</p>}
+                {uploadCurriculum.resources.length > 0 && (
+                  <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                    {uploadCurriculum.resources.map((resource) => (
+                      <li key={resource.url}><a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline underline-offset-4">{resource.title}</a></li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className="mb-2 block text-sm font-medium text-white">Downloadable resources (optional)</label>
+                <p className="mb-3 text-xs text-gray-400">Add PDFs or office documents. Files upload to the connected Backblaze B2 bucket when you submit.</p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.some((file) => file.size > 25 * 1024 * 1024)) {
+                      setUploadError('Each course resource must be smaller than 25MB.');
+                      e.target.value = '';
+                      return;
+                    }
+                    if (files.some((file) => !ALLOWED_RESOURCE_TYPES.has(file.type))) {
+                      setUploadError('Course resources must be PDF, DOC, DOCX, PPT, PPTX, or TXT files.');
+                      e.target.value = '';
+                      return;
+                    }
+                    setUploadResourceFiles(files);
+                    setUploadError(null);
+                  }}
+                  className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-500/20 file:px-4 file:py-2 file:font-medium file:text-purple-200 hover:file:bg-purple-500/30"
+                />
+                {uploadResourceFiles.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm text-gray-300">
+                    {uploadResourceFiles.map((file, index) => (
+                      <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3">
+                        <span className="truncate">{file.name}</span>
+                        <button type="button" onClick={() => setUploadResourceFiles((files) => files.filter((_, fileIndex) => fileIndex !== index))} className="shrink-0 text-rose-300 hover:text-rose-200">Remove</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-white mb-2">Category</label>
@@ -1742,6 +1896,7 @@ export default function Masterclass() {
                   <option value="business-development" className="bg-gray-800">Business Development</option>
                   <option value="professional-development" className="bg-gray-800">Professional Development</option>
                   <option value="personal-development" className="bg-gray-800">Personal Development</option>
+                  <option value="personal-growth" className="bg-gray-800">Personal Growth</option>
                 </select>
               </div>
 
@@ -2038,8 +2193,8 @@ export default function Masterclass() {
 
               {/* Video Upload with Mux */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Course Video *</label>
-                <p className="text-xs text-gray-400 mb-3">Upload a video or provide a Mux stream URL</p>
+                <label className="block text-sm font-medium text-white mb-2">Course intro video</label>
+                <p className="text-xs text-gray-400 mb-3">Optional. Your complete structured lesson plan is included; add video now or later.</p>
 
                 {/* Mode Selection */}
                 <div className="flex gap-2 mb-3">
@@ -2102,7 +2257,7 @@ export default function Masterclass() {
               {/* Success Message */}
               {uploadSuccess && (
                 <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <p className="text-green-400 text-sm">Material uploaded successfully and published to Masterclass!</p>
+                  <p className="text-green-400 text-sm">Course saved and published with its complete lesson plan.</p>
                 </div>
               )}
 
@@ -2112,7 +2267,7 @@ export default function Masterclass() {
                 disabled={uploadLoading}
                 className="w-full py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploadLoading ? 'Uploading...' : 'Upload & Publish'}
+                {uploadLoading ? 'Saving course...' : 'Submit course to Supabase'}
               </button>
             </form>
           </div>
@@ -2249,7 +2404,7 @@ export default function Masterclass() {
           isPremium={editingCourse.is_premium}
           status={editingCourse.status}
           thumbnailUrl={editingCourse.thumbnail_url}
-          contentUrl={editingCourse.content_url}
+          contentUrl={editingCourse.content_url || undefined}
           coursePrice={editingCourse.course_price}
           courseCurrency={editingCourse.course_currency || 'UGX'}
           userId={user?.id}

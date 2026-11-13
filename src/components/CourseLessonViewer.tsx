@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, CheckCircle, Lock, AlertCircle, Download, Play } from 'lucide-react';
-import VideoPlaybackModal from './VideoPlaybackModal';
+import { useState, useEffect } from 'react';
+import { BookOpen, CheckCircle, Lock, AlertCircle, Play } from 'lucide-react';
+import InlineVideoPlayer from './InlineVideoPlayer';
+import type { CourseCurriculum } from '../lib/personalGrowthCourses';
 
 interface Lesson {
   id: number;
@@ -13,11 +14,13 @@ interface Lesson {
   video_id?: string;
   thumbnail_url?: string;
   content_url?: string;
+  practice?: string;
 }
 
 interface CourseLessonViewerProps {
   courseId: string;
   courseLessonsCount: number;
+  curriculum?: CourseCurriculum;
   enrollmentProgress: {
     lessons_completed: number;
     progress_percentage: number;
@@ -29,6 +32,7 @@ interface CourseLessonViewerProps {
 export default function CourseLessonViewer({
   courseId,
   courseLessonsCount,
+  curriculum,
   enrollmentProgress,
   isEnrolled,
   onProgressUpdate,
@@ -38,31 +42,25 @@ export default function CourseLessonViewer({
   const [showCertificateOption, setShowCertificateOption] = useState(false);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
-  // Generate mock lessons based on course lessons count
   useEffect(() => {
-    if (courseLessonsCount > 0) {
-      const mockLessons: Lesson[] = Array.from({ length: courseLessonsCount }, (_, i) => ({
-        id: i + 1,
-        title: `Lesson ${i + 1}: ${['Introduction', 'Fundamentals', 'Intermediate Concepts', 'Advanced Topics', 'Capstone Project', 'Q&A Session'][i % 6]}`,
-        duration: `${30 + i * 5} min`,
-        completed: i < enrollmentProgress.lessons_completed,
-        description: `Learn the concepts and practices for lesson ${i + 1} of this course.`,
-        order: i + 1,
-      }));
-      setLessons(mockLessons);
-      
-      // Auto-select first lesson if not enrolled, first incomplete lesson if enrolled
-      if (isEnrolled && mockLessons.length > 0) {
-        const firstIncomplete = mockLessons.find((l) => !l.completed) || mockLessons[0];
-        setSelectedLesson(firstIncomplete);
-      }
+    const authoredLessons = curriculum?.lessons || [];
+    const nextLessons = authoredLessons.map((lesson, index) => ({
+      ...lesson,
+      id: index + 1,
+      order: index + 1,
+      completed: index < enrollmentProgress.lessons_completed,
+    }));
+    setLessons(nextLessons);
+
+    if (isEnrolled && nextLessons.length > 0) {
+      const firstIncomplete = nextLessons.find((lesson) => !lesson.completed) || nextLessons[0];
+      setSelectedLesson(firstIncomplete);
+    } else {
+      setSelectedLesson(null);
     }
 
-    // Check if course is completed
-    if (isEnrolled && enrollmentProgress.progress_percentage === 100) {
-      setShowCertificateOption(true);
-    }
-  }, [courseLessonsCount, enrollmentProgress, isEnrolled]);
+    setShowCertificateOption(isEnrolled && enrollmentProgress.progress_percentage === 100);
+  }, [curriculum, enrollmentProgress, isEnrolled]);
 
   const handleLessonComplete = () => {
     if (!selectedLesson) return;
@@ -98,7 +96,7 @@ export default function CourseLessonViewer({
     );
   }
 
-  if (courseLessonsCount === 0) {
+  if (courseLessonsCount === 0 || lessons.length === 0) {
     return (
       <div className="glass-effect p-6 rounded-2xl">
         <AlertCircle className="w-6 h-6 text-yellow-400 inline mr-2" />
@@ -190,7 +188,7 @@ export default function CourseLessonViewer({
             <div className="mb-6 aspect-video bg-gray-800 rounded-lg flex items-center justify-center">
               <div className="text-center">
                 <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-400">Video content loading...</p>
+                <p className="text-gray-400">This lesson is a guided reading and practice activity.</p>
               </div>
             </div>
           )}
@@ -203,15 +201,31 @@ export default function CourseLessonViewer({
             </div>
           )}
 
+          {selectedLesson.practice && (
+            <div className="mb-6 rounded-xl border border-purple-400/20 bg-purple-400/10 p-4">
+              <h5 className="mb-2 font-semibold text-purple-200">Practice this lesson</h5>
+              <p className="text-sm leading-6 text-gray-200">{selectedLesson.practice}</p>
+            </div>
+          )}
+
+          {curriculum?.resources?.length ? (
+            <div className="mb-6">
+              <h5 className="mb-2 font-semibold text-white">Sources & further reading</h5>
+              <ul className="space-y-2">
+                {curriculum.resources.map((resource) => (
+                  <li key={resource.url}>
+                    <a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline decoration-sky-300/40 underline-offset-4 hover:text-sky-200">{resource.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {/* Lesson Duration & Resources */}
           <div className="mb-6 space-y-2">
             <p className="text-sm text-gray-400">
               <span className="font-semibold text-gray-300">Duration:</span> {selectedLesson.duration}
             </p>
-            <button className="flex items-center gap-2 text-rose-400 hover:text-rose-300 transition-colors text-sm">
-              <Download className="w-4 h-4" />
-              Download Resources
-            </button>
           </div>
 
           {/* Mark as Complete Button */}
@@ -250,24 +264,14 @@ export default function CourseLessonViewer({
 
       {/* Video Player Modal */}
       {showVideoPlayer && selectedLesson && selectedLesson.content_url && (
-        <VideoPlaybackModal
+        <InlineVideoPlayer
+          isPlaying={showVideoPlayer}
           content={{
             id: courseId,
             title: selectedLesson.title,
             content_url: selectedLesson.content_url,
             thumbnail_url: selectedLesson.thumbnail_url || '',
-            creator: '',
-            category: '',
-            duration: selectedLesson.duration,
-            description: selectedLesson.description || '',
-            views_count: 0,
-            like_count: 0,
-            is_premium: false,
-            user_id: '',
-            created_at: '',
-            type: 'lesson',
           }}
-          isOpen={showVideoPlayer}
           onClose={() => setShowVideoPlayer(false)}
         />
       )}
