@@ -26,13 +26,16 @@ export default function PersonalGrowthShowcase({ onPrepare }: PersonalGrowthShow
             ))}
           </div>
           <p className="mt-6 text-xs leading-5 text-slate-400">
-            Curriculum is original and informed by WHO life-skills guidance and Self-Determination Theory. These educational resources are not therapy or clinical care.
+            Curriculum is original and informed by WHO life-skills guidance, Self-Determination Theory, and implementation-intention research. External courses are independent recommendations; provider access and pricing may vary. These resources are not therapy or clinical care.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {PERSONAL_GROWTH_BLUEPRINTS.map((blueprint) => (
             <article key={blueprint.id} className="flex flex-col rounded-2xl border border-white/10 bg-slate-950/45 p-5">
+              <div className="-mx-5 -mt-5 mb-4 aspect-video overflow-hidden rounded-t-2xl bg-slate-800">
+                <img src={blueprint.thumbnail_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </div>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="rounded-full bg-purple-300/10 px-2.5 py-1 text-xs font-medium text-purple-200">{blueprint.track}</span>
                 <span className="text-xs text-slate-400">{blueprint.learning_format}</span>
@@ -59,7 +62,7 @@ export default function PersonalGrowthShowcase({ onPrepare }: PersonalGrowthShow
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
                   {blueprint.curriculum.resources.map((resource) => (
                     <a key={resource.url} href={resource.url} target="_blank" rel="noreferrer" className="text-xs text-sky-300 underline decoration-sky-300/40 underline-offset-4 hover:text-sky-200">
-                      Source: {resource.title}
+                      {resource.type === 'course' ? 'Recommended course' : 'Source'}: {resource.title}
                     </a>
                   ))}
                 </div>

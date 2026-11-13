@@ -51,6 +51,24 @@ const goalPlanningReference = {
   type: 'reference' as const,
 };
 
+const yaleWellbeingCourse = {
+  title: 'Yale: The Science of Well-Being (Coursera)',
+  url: 'https://www.coursera.org/learn/the-science-of-well-being',
+  type: 'course' as const,
+};
+
+const hkustPersonalGrowthCourse = {
+  title: 'HKUST: Psychology of Personal Growth (edX)',
+  url: 'https://www.edx.org/learn/personal-development/the-hong-kong-university-of-science-and-technology-psychology-of-personal-growth',
+  type: 'course' as const,
+};
+
+const learningHowToLearnCourse = {
+  title: 'Learning How to Learn (Coursera)',
+  url: 'https://www.coursera.org/learn/learning-how-to-learn',
+  type: 'course' as const,
+};
+
 export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
   {
     id: 'self-leadership-foundations',
@@ -72,7 +90,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     thumbnail_url: 'https://images.pexels.com/photos/7984912/pexels-photo-7984912.jpeg',
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference, motivationReference],
+      resources: [lifeSkillsReference, motivationReference, hkustPersonalGrowthCourse],
       lessons: [
         {
           title: 'Start with the life you are actually living',
@@ -133,7 +151,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     thumbnail_url: 'https://images.pexels.com/photos/40080146/pexels-photo-40080146.jpeg',
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference, motivationReference],
+      resources: [lifeSkillsReference, motivationReference, yaleWellbeingCourse],
       lessons: [
         {
           title: 'Emotions as information',
@@ -194,7 +212,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     thumbnail_url: 'https://images.pexels.com/photos/33997/pexels-photo.jpg',
     curriculum: {
       version: 1,
-      resources: [motivationReference, goalPlanningReference],
+      resources: [motivationReference, goalPlanningReference, learningHowToLearnCourse],
       lessons: [
         {
           title: 'Choose a goal you can own',
@@ -243,7 +261,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     thumbnail_url: 'https://images.pexels.com/photos/7963840/pexels-photo-7963840.jpeg',
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference],
+      resources: [lifeSkillsReference, learningHowToLearnCourse],
       lessons: [
         {
           title: 'Frame the challenge before solving it',

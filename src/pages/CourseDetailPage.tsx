@@ -432,11 +432,11 @@ export default function CourseDetailPage() {
                     </ol>
                     {course.curriculum.resources.length > 0 && (
                       <div className="border-t border-white/10 pt-4">
-                        <h3 className="mb-2 text-sm font-semibold text-white">Sources & further reading</h3>
+                        <h3 className="mb-2 text-sm font-semibold text-white">Research & recommended learning</h3>
                         <ul className="space-y-2">
                           {course.curriculum.resources.map((resource) => (
                             <li key={resource.url}>
-                              <a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline decoration-sky-300/40 underline-offset-4 hover:text-sky-200">{resource.title}</a>
+                              <a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline decoration-sky-300/40 underline-offset-4 hover:text-sky-200">{resource.type === 'course' ? 'Recommended course: ' : ''}{resource.title}</a>
                             </li>
                           ))}
                         </ul>

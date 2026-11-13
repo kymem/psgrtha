@@ -210,7 +210,7 @@ export default function CourseLessonViewer({
 
           {curriculum?.resources?.length ? (
             <div className="mb-6">
-              <h5 className="mb-2 font-semibold text-white">Sources & further reading</h5>
+              <h5 className="mb-2 font-semibold text-white">Research & recommended learning</h5>
               <ul className="space-y-2">
                 {curriculum.resources.map((resource) => (
                   <li key={resource.url}>
