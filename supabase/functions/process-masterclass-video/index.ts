@@ -43,10 +43,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { filename, userId, videoUrl } = await req.json();
+    const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Sign in to process videos' }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
 
-    if (!userId || (!filename && !videoUrl)) {
-      return new Response(JSON.stringify({ error: 'Missing filename/videoUrl or userId' }), {
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid session' }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const { filename, videoUrl } = await req.json();
+
+    if (!filename && !videoUrl) {
+      return new Response(JSON.stringify({ error: 'Missing filename or videoUrl' }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -130,7 +146,7 @@ Deno.serve(async (req) => {
       .from('masterclass_video_uploads')
       .insert([
         {
-          user_id: userId,
+          user_id: user.id,
           filename: sourceName,
           b2_url: sourceUrl,
           asset_id: assetId,

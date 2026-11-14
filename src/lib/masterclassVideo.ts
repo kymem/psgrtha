@@ -11,14 +11,20 @@ const STATUS_CHECK_INTERVAL_MS = 2000;
 
 export const toMuxStreamUrl = (playbackId: string) => `https://stream.mux.com/${playbackId}.m3u8`;
 
-export async function ingestVideoUrl(videoUrl: string, userId: string): Promise<ProcessedVideo> {
+export async function getAccessToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sign in to upload videos');
+  return session.access_token;
+}
+
+export async function ingestVideoUrl(videoUrl: string): Promise<ProcessedVideo> {
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-masterclass-video`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      Authorization: `Bearer ${await getAccessToken()}`,
     },
-    body: JSON.stringify({ videoUrl, userId }),
+    body: JSON.stringify({ videoUrl }),
   });
 
   const body = await res.json().catch(() => null);

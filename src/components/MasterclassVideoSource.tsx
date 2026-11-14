@@ -40,7 +40,7 @@ export default function MasterclassVideoSource({ userId, onReady, onCleared }: M
     setError(null);
     setIsProcessing(true);
     try {
-      const video = await ingestVideoUrl(parsed.toString(), userId);
+      const video = await ingestVideoUrl(parsed.toString());
       setIsUrlReady(true);
       onReady(video);
     } catch (err) {
