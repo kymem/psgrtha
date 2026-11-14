@@ -92,6 +92,13 @@ Deno.serve(async (req) => {
       muxInputUrl = sourceUrl;
       sourceName = parsed.pathname.split('/').pop() || 'video-url';
     } else {
+      const ownPrefix = `masterclass_videos/${user.id}/`;
+      if (typeof filename !== 'string' || !filename.startsWith(ownPrefix) || filename.includes('..')) {
+        return new Response(JSON.stringify({ error: 'File does not belong to this account' }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
       if (B2_PUBLIC_URL && B2_PUBLIC_URL.trim()) {
         const publicBase = B2_PUBLIC_URL.replace(/\/$/, '');
         sourceUrl = `${publicBase}/${B2_BUCKET_NAME}/${filename}`;
