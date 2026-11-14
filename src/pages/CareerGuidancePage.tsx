@@ -40,6 +40,7 @@ export default function CareerGuidancePage() {
         .from('masterclass_page_content')
         .select('id, title, creator, category, thumbnail_url, description')
         .eq('id', courseId)
+        .eq('status', 'published')
         .single();
 
       if (fetchError) throw fetchError;

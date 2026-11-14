@@ -79,6 +79,7 @@ export default function CourseDetailPage() {
         .from('masterclass_page_content')
         .select('*')
         .eq('id', courseId)
+        .eq('status', 'published')
         .single();
 
       if (fetchError) throw fetchError;

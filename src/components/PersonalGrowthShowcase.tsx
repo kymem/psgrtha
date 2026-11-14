@@ -31,7 +31,7 @@ export default function PersonalGrowthShowcase({ onPrepare }: PersonalGrowthShow
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {PERSONAL_GROWTH_BLUEPRINTS.map((blueprint) => (
+          {PERSONAL_GROWTH_BLUEPRINTS.filter((blueprint) => blueprint.learning_format === 'Self-paced course').map((blueprint) => (
             <article key={blueprint.id} className="flex flex-col rounded-2xl border border-white/10 bg-slate-950/45 p-5">
               <div className="-mx-5 -mt-5 mb-4 aspect-video overflow-hidden rounded-t-2xl bg-slate-800">
                 <img src={blueprint.thumbnail_url} alt="" loading="lazy" className="h-full w-full object-cover" />

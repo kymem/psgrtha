@@ -41,9 +41,11 @@ import ContentCountdownTimer from '../components/ContentCountdownTimer';
 import VideoUploadWithMuxForMasterclass from '../components/VideoUploadWithMuxForMasterclass';
 import EnrollmentModal from '../components/EnrollmentModal';
 import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
+import PersonalGrowthPrograms from '../components/PersonalGrowthPrograms';
+import PersonalGrowthProgramEditorModal from '../components/PersonalGrowthProgramEditorModal';
 import {
-  PERSONAL_GROWTH_BLUEPRINTS,
   isPersonalGrowthEnabled,
+  isStandalonePersonalGrowthFormat,
   shouldShowPersonalGrowthCategory,
   type CourseCurriculum,
   type PersonalGrowthBlueprint,
@@ -81,20 +83,6 @@ type ContentItem = {
   created_at?: string;
 };
 
-type Workshop = {
-  id: string;
-  title: string;
-  duration: string;
-  instructor: string;
-  format: string;
-  track: string;
-  category: string;
-  location: string;
-  description: string;
-  lessonsCount: number;
-  blueprintId: string;
-};
-
 export default function Masterclass() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -106,12 +94,12 @@ export default function Masterclass() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('courses');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
+  const [programEditor, setProgramEditor] = useState<{ kind: 'workshop' | 'mentorship'; blueprint: PersonalGrowthBlueprint } | null>(null);
+  const [programRefreshKey, setProgramRefreshKey] = useState(0);
   const [activeCategory, setActiveCategory] = useState(personalGrowthEnabled ? 'personal-growth' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'all' | 'popular' | 'newest' | 'highest-rated'>('all');
   const [bookmarkedCourseIds, setBookmarkedCourseIds] = useState<string[]>([]);
-  const [showMentorshipModal, setShowMentorshipModal] = useState(false);
-  const [mentorshipRequestSent, setMentorshipRequestSent] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
 
   // Initialize with preloaded data for instant display (zero delay)
@@ -285,7 +273,10 @@ export default function Masterclass() {
 
       if (error) throw error;
       if (data) {
-        setUserCourses(data.filter((item) => shouldShowPersonalGrowthCategory(item.category)));
+        setUserCourses(data.filter((item) =>
+          shouldShowPersonalGrowthCategory(item.category)
+          && !isStandalonePersonalGrowthFormat(item.category, item.learning_format)
+        ));
       }
     } catch (err) {
       console.error('Error fetching user courses:', err);
@@ -317,7 +308,10 @@ export default function Masterclass() {
       if (error) throw error;
 
       // Merge enrollment data with course data
-      const merged = courses?.filter((course) => shouldShowPersonalGrowthCategory(course.category)).map((course) => {
+      const merged = courses?.filter((course) =>
+        shouldShowPersonalGrowthCategory(course.category)
+        && !isStandalonePersonalGrowthFormat(course.category, course.learning_format)
+      ).map((course) => {
         const enrollment = enrollments.find((e: any) => e.course_id === course.id);
         return {
           ...course,
@@ -764,25 +758,6 @@ export default function Masterclass() {
     }
   };
 
-  const workshops = useMemo<Workshop[]>(
-    () => personalGrowthEnabled ? PERSONAL_GROWTH_BLUEPRINTS
-      .filter((blueprint) => ['Applied workshop', 'Guided class'].includes(blueprint.learning_format))
-      .map((blueprint) => ({
-        id: blueprint.id,
-        title: blueprint.title,
-        duration: blueprint.duration,
-        instructor: 'Personal Growth Studio',
-        format: blueprint.learning_format,
-        track: blueprint.track,
-        category: 'personal-growth',
-        location: 'Online',
-        description: blueprint.description,
-        lessonsCount: blueprint.curriculum.lessons.length,
-        blueprintId: blueprint.id,
-      })) : [],
-    [personalGrowthEnabled]
-  );
-
   const filteredCourses = useMemo(() => {
     const categoryValue = activeCategory;
     return courseContent.filter((course) => {
@@ -815,20 +790,6 @@ export default function Masterclass() {
     }
   }, [filteredCourses, sortBy]);
 
-  const filteredWorkshops = useMemo(() => {
-    const categoryValue = activeCategory;
-    return workshops.filter((workshop) => {
-      const matchesCategory = categoryValue === 'all' || workshop.category === categoryValue;
-      const loweredQuery = searchQuery.toLowerCase();
-      const matchesSearch =
-        loweredQuery.length === 0 ||
-        workshop.title.toLowerCase().includes(loweredQuery) ||
-        workshop.instructor.toLowerCase().includes(loweredQuery) ||
-        workshop.location.toLowerCase().includes(loweredQuery);
-      return matchesCategory && matchesSearch;
-    });
-  }, [workshops, activeCategory, searchQuery]);
-
   const handleEnroll = (courseId: string) => {
     if (!user) {
       alert('Please sign up or sign in to enroll.');
@@ -840,22 +801,6 @@ export default function Masterclass() {
       return;
     }
     alert(`Enrollment successful! Welcome to the masterclass.`);
-  };
-
-  const handleMentorshipRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setMentorshipRequestSent(true);
-  };
-
-  const handleMentorshipClick = () => {
-    if (!user) {
-      alert('Please sign up or sign in to submit a mentorship request.');
-      navigate('/signin');
-      return;
-    }
-    setShowMentorshipModal(true);
-    setMentorshipRequestSent(false);
   };
 
   const handleBookmarkToggle = (courseId: string) => {
@@ -982,18 +927,13 @@ export default function Masterclass() {
 
   const viewOptions: { key: ViewMode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'courses', label: 'Courses', icon: BookOpen },
-    { key: 'workshops', label: 'Workshops', icon: Clock },
+    ...(personalGrowthEnabled ? [{ key: 'workshops' as const, label: 'Workshops', icon: Clock }] : []),
     { key: 'learning', label: 'Learning', icon: Award },
     { key: 'teaching', label: 'Teaching', icon: Briefcase },
-    { key: 'mentorship', label: 'Mentorship', icon: Users }
+    ...(personalGrowthEnabled ? [{ key: 'mentorship' as const, label: 'Mentorship', icon: Users }] : [])
   ];
 
   const courseContainerClass =
-    layoutMode === 'grid'
-      ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
-      : 'grid gap-4 md:block md:space-y-4';
-
-  const workshopContainerClass =
     layoutMode === 'grid'
       ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
       : 'grid gap-4 md:block md:space-y-4';
@@ -1378,39 +1318,20 @@ export default function Masterclass() {
           </>
         )}
 
-        {viewMode === 'workshops' && (
-          <div className={workshopContainerClass}>
-            {filteredWorkshops.map((workshop) => {
-              const blueprint = PERSONAL_GROWTH_BLUEPRINTS.find((item) => item.id === workshop.blueprintId);
-              return (
-                <article key={workshop.id} className="glass-effect rounded-2xl p-6 hover-lift transition-all">
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-purple-400/20 px-3 py-1 text-xs font-medium text-purple-200">{workshop.track}</span>
-                    <span className="rounded-full bg-rose-400/20 px-3 py-1 text-xs font-medium text-rose-200">{workshop.format}</span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white">{workshop.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-300">{workshop.description}</p>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400">
-                    <span>{workshop.lessonsCount} guided lessons</span>
-                    <span>{workshop.duration}</span>
-                    <span>{workshop.location}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => blueprint && applyGrowthBlueprint(blueprint)}
-                    className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 md:w-auto md:min-w-64"
-                  >
-                    Prefill this class in Supabase <ArrowRight className="h-4 w-4" />
-                  </button>
-                </article>
-              );
-            })}
-            {filteredWorkshops.length === 0 && (
-              <div className="glass-effect rounded-2xl p-8 text-center text-gray-300">
-                No workshops match your filters right now.
-              </div>
-            )}
-          </div>
+        {personalGrowthEnabled && viewMode === 'workshops' && (
+          <PersonalGrowthPrograms
+            kind="workshops"
+            category={activeCategory}
+            searchQuery={searchQuery}
+            refreshKey={programRefreshKey}
+            onPrepare={(blueprint) => {
+              if (!user) {
+                navigate('/signin');
+                return;
+              }
+              setProgramEditor({ kind: 'workshop', blueprint });
+            }}
+          />
         )}
 
         {viewMode === 'learning' && (
@@ -1609,59 +1530,20 @@ export default function Masterclass() {
           </div>
         )}
 
-        {viewMode === 'mentorship' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="glass-effect p-8 rounded-2xl text-center mb-8">
-              <Users className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-              <h2 className="text-3xl font-playfair font-bold text-white mb-4">Find Mentorship</h2>
-              <p className="text-gray-300 mb-6">
-                Get personalized guidance from industry professionals to accelerate your career growth and achieve your goals.
-              </p>
-              <button
-                onClick={handleMentorshipClick}
-                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all"
-              >
-                Apply
-              </button>
-            </div>
-
-            <div className="mb-8 grid gap-6 md:grid-cols-2">
-              {personalGrowthEnabled && PERSONAL_GROWTH_BLUEPRINTS.filter((blueprint) => blueprint.learning_format === 'Mentorship series').map((blueprint) => (
-                <article key={blueprint.id} className="glass-effect rounded-2xl p-6">
-                  <span className="rounded-full bg-purple-400/20 px-3 py-1 text-xs font-medium text-purple-200">{blueprint.track}</span>
-                  <h3 className="mt-4 text-xl font-semibold text-white">{blueprint.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-300">{blueprint.description}</p>
-                  <p className="mt-4 text-sm text-gray-400">{blueprint.duration} · {blueprint.curriculum.lessons.length} guided sessions</p>
-                  <button type="button" onClick={() => applyGrowthBlueprint(blueprint)} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white md:w-auto md:min-w-64">
-                    Prefill mentorship series in Supabase <ArrowRight className="h-4 w-4" />
-                  </button>
-                </article>
-              ))}
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="glass-effect p-6 rounded-xl">
-                <Award className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Expert Guidance</h3>
-                <p className="text-gray-300 text-sm">Learn from professionals with years of industry experience</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <Users className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Personalized Approach</h3>
-                <p className="text-gray-300 text-sm">Get tailored advice based on your specific goals and challenges</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <BookOpen className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Career Development</h3>
-                <p className="text-gray-300 text-sm">Receive strategic guidance to advance your career</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <CheckCircle className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Accountability</h3>
-                <p className="text-gray-300 text-sm">Stay on track with regular check-ins and support</p>
-              </div>
-            </div>
-          </div>
+        {personalGrowthEnabled && viewMode === 'mentorship' && (
+          <PersonalGrowthPrograms
+            kind="mentorship"
+            category={activeCategory}
+            searchQuery={searchQuery}
+            refreshKey={programRefreshKey}
+            onPrepare={(blueprint) => {
+              if (!user) {
+                navigate('/signin');
+                return;
+              }
+              setProgramEditor({ kind: 'mentorship', blueprint });
+            }}
+          />
         )}
       </div>
 
@@ -1674,57 +1556,16 @@ export default function Masterclass() {
         </div>
       )}
 
-      {showMentorshipModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-effect p-6 rounded-2xl max-w-md w-full">
-            {!mentorshipRequestSent ? (
-              <>
-                <h3 className="text-xl font-semibold text-white mb-4">Request Mentorship</h3>
-                <p className="text-gray-300 mb-4">
-                  Submit a request for mentorship below
-                </p>
-                <form onSubmit={handleMentorshipRequest}>
-                  <div className="space-y-4">
-                    <textarea
-                      className="w-full h-24 bg-transparent border border-gray-600 rounded-lg p-3 text-white resize-none focus:border-rose-400 outline-none"
-                      placeholder="What do you need help with?"
-                      required
-                    ></textarea>
-                    <button
-                      type="submit"
-                      className="w-full py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all"
-                    >
-                      Submit
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-4">Request Sent!</h3>
-                <p className="text-gray-300 mb-4">
-                  Your mentorship request has been received for review. We will notify you once it's approved.
-                </p>
-                <p className="text-yellow-400 text-sm mb-4">
-                  Please note: Mentorship is a premium feature.
-                </p>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowMentorshipModal(false)}
-                    className="flex-1 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button
-                    className="flex-1 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-xl hover:shadow-xl transition-all"
-                  >
-                    Upgrade to Premium
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {programEditor && (
+        <PersonalGrowthProgramEditorModal
+          kind={programEditor.kind}
+          blueprint={programEditor.blueprint}
+          onClose={() => setProgramEditor(null)}
+          onSaved={() => {
+            setProgramEditor(null);
+            setProgramRefreshKey((value) => value + 1);
+          }}
+        />
       )}
 
       {/* Upload Content Modal */}
@@ -1807,9 +1648,6 @@ export default function Masterclass() {
                   <label className="mb-2 block text-sm font-medium text-white">Learning format</label>
                   <select value={uploadLearningFormat} onChange={(e) => setUploadLearningFormat(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white">
                     <option>Self-paced course</option>
-                    <option>Guided class</option>
-                    <option>Applied workshop</option>
-                    <option>Mentorship series</option>
                   </select>
                 </div>
                 <div>

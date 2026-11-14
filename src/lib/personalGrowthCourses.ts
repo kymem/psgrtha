@@ -41,6 +41,10 @@ export const isPersonalGrowthEnabled = () =>
 export const shouldShowPersonalGrowthCategory = (category?: string | null) =>
   isPersonalGrowthEnabled() || category?.trim().toLowerCase() !== 'personal-growth';
 
+export const isStandalonePersonalGrowthFormat = (category?: string | null, format?: string | null) =>
+  category?.trim().toLowerCase() === 'personal-growth'
+  && ['guided class', 'applied workshop', 'mentorship series'].includes(format?.trim().toLowerCase() || '');
+
 const lifeSkillsReference = {
   title: 'WHO life-skills education guide',
   url: 'https://iris.who.int/bitstream/handle/10665/331948/9789240004849-eng.pdf',
