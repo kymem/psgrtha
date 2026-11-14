@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { shouldShowPersonalGrowthCategory } from '../lib/personalGrowthCourses';
 
 interface UserStats {
   portfolio_views: number;
@@ -55,7 +56,9 @@ export function DataPreloadProvider({ children }: { children: React.ReactNode })
         ]);
 
         const mediaContent = mediaRes.data || [];
-        const masterclassContent = masterclassRes.data || [];
+        const masterclassContent = (masterclassRes.data || []).filter((item: any) =>
+          shouldShowPersonalGrowthCategory(item.category)
+        );
         const publishedEvents = eventsRes.data || [];
         const allJobs = jobsRes.data || [];
 

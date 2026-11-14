@@ -14,7 +14,6 @@ import {
   Bookmark,
   LayoutGrid,
   List as ListIcon,
-  MapPin,
   Briefcase,
   Eye,
   X,
@@ -41,6 +40,27 @@ import EditMasterclassContentModal from '../components/EditMasterclassContentMod
 import ContentCountdownTimer from '../components/ContentCountdownTimer';
 import VideoUploadWithMuxForMasterclass from '../components/VideoUploadWithMuxForMasterclass';
 import EnrollmentModal from '../components/EnrollmentModal';
+import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
+import PersonalGrowthPrograms from '../components/PersonalGrowthPrograms';
+import PersonalGrowthProgramEditorModal from '../components/PersonalGrowthProgramEditorModal';
+import {
+  isPersonalGrowthEnabled,
+  isStandalonePersonalGrowthFormat,
+  shouldShowPersonalGrowthCategory,
+  type CourseCurriculum,
+  type PersonalGrowthBlueprint,
+} from '../lib/personalGrowthCourses';
+
+const getMuxStreamUrl = (input: string) => {
+  try {
+    const url = new URL(input.trim());
+    if (url.protocol !== 'https:' || url.hostname !== 'stream.mux.com') return null;
+    const playbackId = url.pathname.match(/^\/([A-Za-z0-9]+)(?:\.m3u8)?$/)?.[1];
+    return playbackId ? `https://stream.mux.com/${playbackId}.m3u8${url.search}` : null;
+  } catch {
+    return null;
+  }
+};
 
 type ViewMode = 'courses' | 'workshops' | 'learning' | 'teaching' | 'mentorship';
 type LayoutMode = 'grid' | 'list';
@@ -61,36 +81,36 @@ type ContentItem = {
   learning_outcomes?: string[];
   features?: string[];
   lessons_count?: number;
-};
-
-type Workshop = {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  duration: string;
-  instructor: string;
-  spots: number;
-  price: number;
-  category: string;
-  location: string;
+  learning_format?: string;
+  curriculum?: CourseCurriculum;
+  content_url?: string | null;
+  status?: string;
+  deleted_at?: string | null;
+  auto_delete_at?: string | null;
+  saved?: boolean;
+  course_price?: number;
+  course_currency?: string;
+  display_order?: number;
+  created_at?: string;
 };
 
 export default function Masterclass() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const personalGrowthEnabled = isPersonalGrowthEnabled();
+  const defaultCourseCategory = personalGrowthEnabled ? 'personal-growth' : 'professional-development';
   const [isAdmin] = useState(user?.email ? isUserAdmin(user.email) : false);
   const { draggedItem, handleDragStart, handleDragOver, handleDrop, handleDragEnd, saveOrderToDatabase } = useDragReorder();
   const preloadedData = usePreloadedData();
 
   const [viewMode, setViewMode] = useState<ViewMode>('courses');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [programEditor, setProgramEditor] = useState<{ kind: 'workshop' | 'mentorship'; blueprint: PersonalGrowthBlueprint } | null>(null);
+  const [programRefreshKey, setProgramRefreshKey] = useState(0);
+  const [activeCategory, setActiveCategory] = useState(personalGrowthEnabled ? 'personal-growth' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'all' | 'popular' | 'newest' | 'highest-rated'>('all');
   const [bookmarkedCourseIds, setBookmarkedCourseIds] = useState<string[]>([]);
-  const [showMentorshipModal, setShowMentorshipModal] = useState(false);
-  const [mentorshipRequestSent, setMentorshipRequestSent] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
 
   // Initialize with preloaded data for instant display (zero delay)
@@ -98,7 +118,13 @@ export default function Masterclass() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('');
+  const [uploadCategory, setUploadCategory] = useState(defaultCourseCategory);
+  const [uploadLearningFormat, setUploadLearningFormat] = useState('Self-paced course');
+  const [uploadCurriculum, setUploadCurriculum] = useState<CourseCurriculum>({ version: 1, lessons: [], resources: [] });
+  const [uploadPrerequisites, setUploadPrerequisites] = useState('');
+  const [uploadTargetAudience, setUploadTargetAudience] = useState('');
+  const [uploadCourseDuration, setUploadCourseDuration] = useState('');
+  const [uploadResourceFiles, setUploadResourceFiles] = useState<File[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -124,6 +150,7 @@ export default function Masterclass() {
   const [uploadThumbnailDragActive, setUploadThumbnailDragActive] = useState(false);
   const [uploadVideoMode, setUploadVideoMode] = useState<'upload' | 'url'>('upload');
   const [uploadVideoUrl, setUploadVideoUrl] = useState('');
+  const [lessonVideoUrls, setLessonVideoUrls] = useState<Record<number, string>>({});
   const [uploadCurrency, setUploadCurrency] = useState('UGX');
   const [userCourses, setUserCourses] = useState<ContentItem[]>([]);
   const [loadingUserCourses, setLoadingUserCourses] = useState(true);
@@ -154,6 +181,14 @@ export default function Masterclass() {
     video: ['video/mp4', 'video/webm', 'video/quicktime'],
     audio: ['audio/mpeg', 'audio/wav', 'audio/ogg'],
   };
+  const ALLOWED_RESOURCE_TYPES = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+  ]);
 
   const courseCategories = useMemo(
     () => [
@@ -175,9 +210,10 @@ export default function Masterclass() {
       'AI-research-&-innovation',
       'business-development',
       'professional-development',
-      'personal-development'
+      'personal-development',
+      ...(personalGrowthEnabled ? ['personal-growth'] : []),
     ],
-    []
+    [personalGrowthEnabled]
   );
 
   function getCategoryLabel(category: string): string {
@@ -209,8 +245,9 @@ export default function Masterclass() {
 
       if (error) throw error;
       if (data) {
+        const visibleCourses: ContentItem[] = data.filter((item: ContentItem) => shouldShowPersonalGrowthCategory(item.category));
         // Prefetch all thumbnail URLs to prevent image flicker when updating state
-        const prefetchPromises = data.map(
+        const prefetchPromises = visibleCourses.map(
           (item) =>
             new Promise<void>((resolve) => {
               const img = new Image();
@@ -221,14 +258,14 @@ export default function Masterclass() {
         );
         await Promise.all(prefetchPromises);
 
-        setCourseContent(data);
+        setCourseContent(visibleCourses);
         // Cache for instant load next time (localStorage for persistence)
         try {
-          localStorage.setItem('masterclass_content_thumbnails', JSON.stringify(data));
+          localStorage.setItem('masterclass_content_thumbnails', JSON.stringify(visibleCourses));
         } catch (e) {
           // localStorage might be full, ignore
         }
-        sessionStorage.setItem('masterclass_content_cache', JSON.stringify(data));
+        sessionStorage.setItem('masterclass_content_cache', JSON.stringify(visibleCourses));
       }
     } catch (err) {
       console.error('Error fetching course content:', err);
@@ -248,7 +285,10 @@ export default function Masterclass() {
 
       if (error) throw error;
       if (data) {
-        setUserCourses(data);
+        setUserCourses(data.filter((item) =>
+          shouldShowPersonalGrowthCategory(item.category)
+          && !isStandalonePersonalGrowthFormat(item.category, item.learning_format)
+        ));
       }
     } catch (err) {
       console.error('Error fetching user courses:', err);
@@ -280,7 +320,10 @@ export default function Masterclass() {
       if (error) throw error;
 
       // Merge enrollment data with course data
-      const merged = courses?.map((course) => {
+      const merged = courses?.filter((course) =>
+        shouldShowPersonalGrowthCategory(course.category)
+        && !isStandalonePersonalGrowthFormat(course.category, course.learning_format)
+      ).map((course) => {
         const enrollment = enrollments.find((e: any) => e.course_id === course.id);
         return {
           ...course,
@@ -541,8 +584,46 @@ export default function Masterclass() {
     if (droppedFile) handleUploadThumbnailSelect(droppedFile);
   };
 
+  const applyGrowthBlueprint = (blueprint: PersonalGrowthBlueprint) => {
+    if (!personalGrowthEnabled) return;
+    if (!user) {
+      navigate('/signin');
+      return;
+    }
+
+    setUploadTitle(blueprint.title);
+    setUploadDescription(blueprint.description);
+    setUploadCategory('personal-growth');
+    setUploadLearningFormat(blueprint.learning_format);
+    setUploadCurriculum(blueprint.curriculum);
+    setLessonVideoUrls({});
+    setUploadPrerequisites(blueprint.prerequisites);
+    setUploadTargetAudience(blueprint.target_audience);
+    setUploadCourseDuration(blueprint.duration);
+    setUploadLevel(blueprint.level);
+    setUploadLearningObjectives(blueprint.learning_outcomes);
+    setUploadFeatures(blueprint.features);
+    setUploadLessons(String(blueprint.curriculum.lessons.length));
+    setUploadThumbnailMode('url');
+    setUploadThumbnailUrl(blueprint.thumbnail_url);
+    setUploadVideoMode('upload');
+    setUploadVideoPlaybackId(null);
+    setUploadVideoId(null);
+    setUploadVideoDuration(null);
+    setUploadResourceFiles([]);
+    setUploadPrice(0);
+    setUploadCurrency('UGX');
+    setUploadError(null);
+    setShowUploadModal(true);
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!shouldShowPersonalGrowthCategory(uploadCategory)) {
+      setUploadError('Personal Growth content is not available on this platform');
+      return;
+    }
 
     if (!user || !profile) {
       setUploadError('You must be logged in to upload content');
@@ -554,26 +635,16 @@ export default function Masterclass() {
       return;
     }
 
-    // Validate video (either uploaded or URL)
     let finalVideoUrl = '';
-    if (uploadVideoMode === 'upload') {
-      if (!uploadVideoPlaybackId || !uploadVideoId) {
-        setUploadError('Please upload a video');
-        return;
-      }
+    if (uploadVideoMode === 'upload' && uploadVideoPlaybackId && uploadVideoId) {
       finalVideoUrl = `https://stream.mux.com/${uploadVideoPlaybackId}.m3u8`;
-    } else {
-      if (!uploadVideoUrl.trim()) {
-        setUploadError('Please enter a video URL');
+    } else if (uploadVideoMode === 'url' && uploadVideoUrl.trim()) {
+      const muxStreamUrl = getMuxStreamUrl(uploadVideoUrl);
+      if (!muxStreamUrl) {
+        setUploadError('Enter a Mux playback URL from stream.mux.com.');
         return;
       }
-      try {
-        new URL(uploadVideoUrl);
-        finalVideoUrl = uploadVideoUrl;
-      } catch {
-        setUploadError('Please enter a valid video URL');
-        return;
-      }
+      finalVideoUrl = muxStreamUrl;
     }
 
     // Validate thumbnail (either uploaded or URL)
@@ -612,6 +683,16 @@ export default function Masterclass() {
         finalThumbnailUrl = thumbnailUrl;
       }
 
+      const uploadedResources = await Promise.all(uploadResourceFiles.map(async (file, index) => {
+        const { publicUrl, error } = await uploadToB2(file, `masterclass_resources/${user.id}/${index}`);
+        if (error) throw new Error(error);
+        return { title: file.name, url: publicUrl, type: 'document' as const };
+      }));
+      const finalCurriculum = {
+        ...uploadCurriculum,
+        resources: [...uploadCurriculum.resources, ...uploadedResources],
+      };
+
       const muxStreamUrl = finalVideoUrl;
 
       const { error: insertError } = await supabase.from('masterclass_page_content').insert([
@@ -621,14 +702,18 @@ export default function Masterclass() {
           creator: profile.name,
           description: uploadDescription || null,
           thumbnail_url: finalThumbnailUrl,
-          content_url: muxStreamUrl,
+          content_url: muxStreamUrl || null,
           type: 'course-material',
           category: uploadCategory || null,
-          duration: uploadVideoMode === 'upload' ? uploadVideoDuration : null,
+          duration: uploadVideoDuration || uploadCourseDuration || null,
           level: uploadLevel,
           learning_outcomes: uploadLearningObjectives,
           features: uploadFeatures,
-          lessons_count: parseInt(uploadLessons) || 0,
+          lessons_count: uploadCurriculum.lessons.length || parseInt(uploadLessons) || 0,
+          learning_format: uploadLearningFormat,
+          curriculum: finalCurriculum,
+          prerequisites: uploadPrerequisites || null,
+          target_audience: uploadTargetAudience || null,
           video_upload_id: uploadVideoMode === 'upload' ? uploadVideoId : null,
           course_price: uploadPrice || 0,
           course_currency: uploadCurrency,
@@ -650,7 +735,13 @@ export default function Masterclass() {
       setUploadPreview(null);
       setUploadThumbnail(null);
       setUploadThumbnailPreview(null);
-      setUploadCategory('');
+      setUploadResourceFiles([]);
+      setUploadCategory(defaultCourseCategory);
+      setUploadLearningFormat('Self-paced course');
+      setUploadCurriculum({ version: 1, lessons: [], resources: [] });
+      setUploadPrerequisites('');
+      setUploadTargetAudience('');
+      setUploadCourseDuration('');
       setUploadLevel('All Levels');
       setUploadLearningObjectives([]);
       setUploadLearningObjectiveInput('');
@@ -679,51 +770,10 @@ export default function Masterclass() {
     }
   };
 
-  const workshops = useMemo<Workshop[]>(
-    () => [
-      {
-        id: 1,
-        title: 'Creative Bootcamp',
-        date: 'March 15, 2026',
-        time: '2:00 PM EAT',
-        duration: '3 hours',
-        instructor: 'Alex Chen',
-        spots: 25,
-        price: 185000,
-        category: 'digital-marketing',
-        location: 'Kampala Creative Hub'
-      },
-      {
-        id: 2,
-        title: 'Personal Branding Workshop',
-        date: 'June 20, 2026',
-        time: '10:00 AM EAT',
-        duration: '4 hours',
-        instructor: 'Maya Patel',
-        spots: 15,
-        price: 300000,
-        category: 'professional-development',
-        location: 'Virtual (Live)'
-      },
-      {
-        id: 3,
-        title: 'Litflex - Multimedia Analytica',
-        date: 'June 5, 2026',
-        time: '4:00 PM EAT',
-        duration: '3 hours',
-        instructor: 'Rouje Gerard',
-        spots: 30,
-        price: 220000,
-        category: 'critical-media-literacy',
-        location: 'Kampala Cine Arena'
-      }
-    ],
-    []
-  );
-
   const filteredCourses = useMemo(() => {
     const categoryValue = activeCategory;
     return courseContent.filter((course) => {
+      const matchesPlatform = shouldShowPersonalGrowthCategory(course.category);
       const matchesCategory = categoryValue === 'all' || course.category === categoryValue;
       const loweredQuery = searchQuery.toLowerCase();
       const matchesSearch =
@@ -731,7 +781,7 @@ export default function Masterclass() {
         course.title.toLowerCase().includes(loweredQuery) ||
         course.creator.toLowerCase().includes(loweredQuery) ||
         course.description.toLowerCase().includes(loweredQuery);
-      return matchesCategory && matchesSearch;
+      return matchesPlatform && matchesCategory && matchesSearch;
     });
   }, [courseContent, activeCategory, searchQuery]);
 
@@ -752,20 +802,6 @@ export default function Masterclass() {
     }
   }, [filteredCourses, sortBy]);
 
-  const filteredWorkshops = useMemo(() => {
-    const categoryValue = activeCategory;
-    return workshops.filter((workshop) => {
-      const matchesCategory = categoryValue === 'all' || workshop.category === categoryValue;
-      const loweredQuery = searchQuery.toLowerCase();
-      const matchesSearch =
-        loweredQuery.length === 0 ||
-        workshop.title.toLowerCase().includes(loweredQuery) ||
-        workshop.instructor.toLowerCase().includes(loweredQuery) ||
-        workshop.location.toLowerCase().includes(loweredQuery);
-      return matchesCategory && matchesSearch;
-    });
-  }, [workshops, activeCategory, searchQuery]);
-
   const handleEnroll = (courseId: string) => {
     if (!user) {
       alert('Please sign up or sign in to enroll.');
@@ -777,22 +813,6 @@ export default function Masterclass() {
       return;
     }
     alert(`Enrollment successful! Welcome to the masterclass.`);
-  };
-
-  const handleMentorshipRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setMentorshipRequestSent(true);
-  };
-
-  const handleMentorshipClick = () => {
-    if (!user) {
-      alert('Please sign up or sign in to submit a mentorship request.');
-      navigate('/signin');
-      return;
-    }
-    setShowMentorshipModal(true);
-    setMentorshipRequestSent(false);
   };
 
   const handleBookmarkToggle = (courseId: string) => {
@@ -919,18 +939,13 @@ export default function Masterclass() {
 
   const viewOptions: { key: ViewMode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'courses', label: 'Courses', icon: BookOpen },
-    { key: 'workshops', label: 'Workshops', icon: Clock },
+    ...(personalGrowthEnabled ? [{ key: 'workshops' as const, label: 'Workshops', icon: Clock }] : []),
     { key: 'learning', label: 'Learning', icon: Award },
     { key: 'teaching', label: 'Teaching', icon: Briefcase },
-    { key: 'mentorship', label: 'Mentorship', icon: Users }
+    ...(personalGrowthEnabled ? [{ key: 'mentorship' as const, label: 'Mentorship', icon: Users }] : [])
   ];
 
   const courseContainerClass =
-    layoutMode === 'grid'
-      ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
-      : 'grid gap-4 md:block md:space-y-4';
-
-  const workshopContainerClass =
     layoutMode === 'grid'
       ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
       : 'grid gap-4 md:block md:space-y-4';
@@ -1073,7 +1088,9 @@ export default function Masterclass() {
           <div>
             <h1 className="text-4xl font-playfair font-bold text-white mb-2">Masterclass</h1>
             <p className="text-gray-300">
-              Stand out with a certificate for your skills and the support of industry experts
+              {personalGrowthEnabled
+                ? 'Practical learning for self-awareness, resilience, habits, decision-making, and stronger relationships.'
+                : 'Explore courses and learning resources for professional development.'}
             </p>
           </div>
 
@@ -1179,7 +1196,9 @@ export default function Masterclass() {
         </div>
 
         {viewMode === 'courses' && (
-          <div className={courseContainerClass}>
+          <>
+            {personalGrowthEnabled && <PersonalGrowthShowcase onPrepare={applyGrowthBlueprint} />}
+            <div className={courseContainerClass}>
             {sortedCourses.length > 0 ? (
               sortedCourses.map((course) => {
                 const isBookmarked = bookmarkedCourseIds.includes(course.id);
@@ -1307,46 +1326,24 @@ export default function Masterclass() {
                 No courses found. Try adjusting your search or filters.
               </div>
             ) : null}
-          </div>
+            </div>
+          </>
         )}
 
-        {viewMode === 'workshops' && (
-          <div className={workshopContainerClass}>
-            {filteredWorkshops.map((workshop) => (
-              <div
-                key={workshop.id}
-                className={`glass-effect rounded-2xl overflow-hidden hover-lift transition-all p-6 ${
-                  layoutMode === 'list' ? 'md:flex md:items-center md:justify-between' : ''
-                }`}
-              >
-                <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{workshop.title}</h3>
-                  <div className="text-gray-300 text-sm space-y-1">
-                    <div>{workshop.date} at {workshop.time}</div>
-                    <div>{workshop.duration} • {workshop.spots} spots left</div>
-                    <div>by {workshop.instructor}</div>
-                  </div>
-                </div>
-                <div className="mt-4 md:mt-0 md:text-right">
-                  <div className="flex items-center justify-start md:justify-end gap-2 text-sm text-gray-300 mb-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{workshop.location}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:justify-end md:gap-4">
-                    <span className="text-rose-400 font-bold">UGX --</span>
-                    <button className="px-4 py-2 bg-gradient-to-r from-rose-500 to-purple-600 text-white text-sm rounded-lg hover:shadow-lg transition-all">
-                      Register
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredWorkshops.length === 0 && (
-              <div className="glass-effect rounded-2xl p-8 text-center text-gray-300">
-                No workshops match your filters right now.
-              </div>
-            )}
-          </div>
+        {personalGrowthEnabled && viewMode === 'workshops' && (
+          <PersonalGrowthPrograms
+            kind="workshops"
+            category={activeCategory}
+            searchQuery={searchQuery}
+            refreshKey={programRefreshKey}
+            onPrepare={(blueprint) => {
+              if (!user) {
+                navigate('/signin');
+                return;
+              }
+              setProgramEditor({ kind: 'workshop', blueprint });
+            }}
+          />
         )}
 
         {viewMode === 'learning' && (
@@ -1545,45 +1542,20 @@ export default function Masterclass() {
           </div>
         )}
 
-        {viewMode === 'mentorship' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="glass-effect p-8 rounded-2xl text-center mb-8">
-              <Users className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-              <h2 className="text-3xl font-playfair font-bold text-white mb-4">Find Mentorship</h2>
-              <p className="text-gray-300 mb-6">
-                Get personalized guidance from industry professionals to accelerate your career growth and achieve your goals.
-              </p>
-              <button
-                onClick={handleMentorshipClick}
-                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all"
-              >
-                Apply
-              </button>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="glass-effect p-6 rounded-xl">
-                <Award className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Expert Guidance</h3>
-                <p className="text-gray-300 text-sm">Learn from professionals with years of industry experience</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <Users className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Personalized Approach</h3>
-                <p className="text-gray-300 text-sm">Get tailored advice based on your specific goals and challenges</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <BookOpen className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Career Development</h3>
-                <p className="text-gray-300 text-sm">Receive strategic guidance to advance your career</p>
-              </div>
-              <div className="glass-effect p-6 rounded-xl">
-                <CheckCircle className="w-10 h-10 text-rose-400 mb-3" />
-                <h3 className="text-xl font-semibold text-white mb-2">Accountability</h3>
-                <p className="text-gray-300 text-sm">Stay on track with regular check-ins and support</p>
-              </div>
-            </div>
-          </div>
+        {personalGrowthEnabled && viewMode === 'mentorship' && (
+          <PersonalGrowthPrograms
+            kind="mentorship"
+            category={activeCategory}
+            searchQuery={searchQuery}
+            refreshKey={programRefreshKey}
+            onPrepare={(blueprint) => {
+              if (!user) {
+                navigate('/signin');
+                return;
+              }
+              setProgramEditor({ kind: 'mentorship', blueprint });
+            }}
+          />
         )}
       </div>
 
@@ -1596,65 +1568,27 @@ export default function Masterclass() {
         </div>
       )}
 
-      {showMentorshipModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-effect p-6 rounded-2xl max-w-md w-full">
-            {!mentorshipRequestSent ? (
-              <>
-                <h3 className="text-xl font-semibold text-white mb-4">Request Mentorship</h3>
-                <p className="text-gray-300 mb-4">
-                  Submit a request for mentorship below
-                </p>
-                <form onSubmit={handleMentorshipRequest}>
-                  <div className="space-y-4">
-                    <textarea
-                      className="w-full h-24 bg-transparent border border-gray-600 rounded-lg p-3 text-white resize-none focus:border-rose-400 outline-none"
-                      placeholder="What do you need help with?"
-                      required
-                    ></textarea>
-                    <button
-                      type="submit"
-                      className="w-full py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all"
-                    >
-                      Submit
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-4">Request Sent!</h3>
-                <p className="text-gray-300 mb-4">
-                  Your mentorship request has been received for review. We will notify you once it's approved.
-                </p>
-                <p className="text-yellow-400 text-sm mb-4">
-                  Please note: Mentorship is a premium feature.
-                </p>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowMentorshipModal(false)}
-                    className="flex-1 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button
-                    className="flex-1 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-xl hover:shadow-xl transition-all"
-                  >
-                    Upgrade to Premium
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {programEditor && (
+        <PersonalGrowthProgramEditorModal
+          kind={programEditor.kind}
+          blueprint={programEditor.blueprint}
+          onClose={() => setProgramEditor(null)}
+          onSaved={() => {
+            setProgramEditor(null);
+            setProgramRefreshKey((value) => value + 1);
+          }}
+        />
       )}
 
       {/* Upload Content Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-effect p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="glass-effect p-6 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-white">Upload Course Material</h3>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Create a Personal Growth course</h3>
+                <p className="mt-1 text-sm text-gray-400">Review the prefilled course and lesson plan, then submit it to Supabase to publish.</p>
+              </div>
               <button
                 onClick={() => {
                   setShowUploadModal(false);
@@ -1664,9 +1598,15 @@ export default function Masterclass() {
                   setUploadPreview(null);
                   setUploadThumbnail(null);
                   setUploadThumbnailPreview(null);
+                  setUploadResourceFiles([]);
                   setUploadVideoPlaybackId(null);
                   setUploadVideoId(null);
-                  setUploadCategory('');
+                  setUploadCategory(defaultCourseCategory);
+                  setUploadLearningFormat('Self-paced course');
+                  setUploadCurriculum({ version: 1, lessons: [], resources: [] });
+                  setUploadPrerequisites('');
+                  setUploadTargetAudience('');
+                  setUploadCourseDuration('');
                   setUploadLevel('All Levels');
                   setUploadLearningObjectives([]);
                   setUploadLearningObjectiveInput('');
@@ -1715,6 +1655,88 @@ export default function Masterclass() {
                 />
               </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Learning format</label>
+                  <select value={uploadLearningFormat} onChange={(e) => setUploadLearningFormat(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white">
+                    <option>Self-paced course</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Estimated duration</label>
+                  <input value={uploadCourseDuration} onChange={(e) => setUploadCourseDuration(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" placeholder="e.g. 6 lessons · approximately 3 hours" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Prerequisites</label>
+                  <textarea rows={3} value={uploadPrerequisites} onChange={(e) => setUploadPrerequisites(e.target.value)} className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white">Target audience</label>
+                  <textarea rows={3} value={uploadTargetAudience} onChange={(e) => setUploadTargetAudience(e.target.value)} className="w-full resize-none rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-white" />
+                </div>
+              </div>
+
+              <details className="rounded-xl border border-purple-300/20 bg-purple-300/5 p-4" open={uploadCurriculum.lessons.length > 0}>
+                <summary className="cursor-pointer font-semibold text-white">Lesson plan ({uploadCurriculum.lessons.length} lessons) — click to review</summary>
+                {uploadCurriculum.lessons.length > 0 ? (
+                  <ol className="mt-4 space-y-3">
+                    {uploadCurriculum.lessons.map((lesson, index) => (
+                      <li key={lesson.title} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <h4 className="font-medium text-white">{index + 1}. {lesson.title}</h4>
+                          <span className="text-xs text-gray-400">{lesson.duration}</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-gray-300">{lesson.description}</p>
+                        <p className="mt-2 text-sm leading-6 text-purple-200"><span className="font-semibold">Practice:</span> {lesson.practice}</p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p className="mt-3 text-sm text-gray-400">Choose a curated blueprint to prefill the complete lesson plan.</p>}
+                {uploadCurriculum.resources.length > 0 && (
+                  <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                    {uploadCurriculum.resources.map((resource) => (
+                      <li key={resource.url}><a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline underline-offset-4">{resource.title}</a></li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className="mb-2 block text-sm font-medium text-white">Downloadable resources (optional)</label>
+                <p className="mb-3 text-xs text-gray-400">Add PDFs or office documents. Files upload to the connected Backblaze B2 bucket when you submit.</p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.some((file) => file.size > 25 * 1024 * 1024)) {
+                      setUploadError('Each course resource must be smaller than 25MB.');
+                      e.target.value = '';
+                      return;
+                    }
+                    if (files.some((file) => !ALLOWED_RESOURCE_TYPES.has(file.type))) {
+                      setUploadError('Course resources must be PDF, DOC, DOCX, PPT, PPTX, or TXT files.');
+                      e.target.value = '';
+                      return;
+                    }
+                    setUploadResourceFiles(files);
+                    setUploadError(null);
+                  }}
+                  className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-500/20 file:px-4 file:py-2 file:font-medium file:text-purple-200 hover:file:bg-purple-500/30"
+                />
+                {uploadResourceFiles.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm text-gray-300">
+                    {uploadResourceFiles.map((file, index) => (
+                      <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3">
+                        <span className="truncate">{file.name}</span>
+                        <button type="button" onClick={() => setUploadResourceFiles((files) => files.filter((_, fileIndex) => fileIndex !== index))} className="shrink-0 text-rose-300 hover:text-rose-200">Remove</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-white mb-2">Category</label>
@@ -1742,6 +1764,7 @@ export default function Masterclass() {
                   <option value="business-development" className="bg-gray-800">Business Development</option>
                   <option value="professional-development" className="bg-gray-800">Professional Development</option>
                   <option value="personal-development" className="bg-gray-800">Personal Development</option>
+                  {personalGrowthEnabled && <option value="personal-growth" className="bg-gray-800">Personal Growth</option>}
                 </select>
               </div>
 
@@ -2038,8 +2061,8 @@ export default function Masterclass() {
 
               {/* Video Upload with Mux */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Course Video *</label>
-                <p className="text-xs text-gray-400 mb-3">Upload a video or provide a Mux stream URL</p>
+                <label className="block text-sm font-medium text-white mb-2">Course intro video</label>
+                <p className="text-xs text-gray-400 mb-3">Optional. Your complete structured lesson plan is included; add video now or later.</p>
 
                 {/* Mode Selection */}
                 <div className="flex gap-2 mb-3">
@@ -2102,7 +2125,7 @@ export default function Masterclass() {
               {/* Success Message */}
               {uploadSuccess && (
                 <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <p className="text-green-400 text-sm">Material uploaded successfully and published to Masterclass!</p>
+                  <p className="text-green-400 text-sm">Course saved and published with its complete lesson plan.</p>
                 </div>
               )}
 
@@ -2112,7 +2135,7 @@ export default function Masterclass() {
                 disabled={uploadLoading}
                 className="w-full py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploadLoading ? 'Uploading...' : 'Upload & Publish'}
+                {uploadLoading ? 'Saving course...' : 'Submit course to Supabase'}
               </button>
             </form>
           </div>
@@ -2249,7 +2272,7 @@ export default function Masterclass() {
           isPremium={editingCourse.is_premium}
           status={editingCourse.status}
           thumbnailUrl={editingCourse.thumbnail_url}
-          contentUrl={editingCourse.content_url}
+          contentUrl={editingCourse.content_url || undefined}
           coursePrice={editingCourse.course_price}
           courseCurrency={editingCourse.course_currency || 'UGX'}
           userId={user?.id}

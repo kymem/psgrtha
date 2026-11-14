@@ -1,27 +1,25 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Play,
   Clock,
   BookOpen,
-  Award,
   Star,
   Users,
   CheckCircle,
-  Lock,
   Share2,
   Bookmark,
   ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import type { CourseEnrollment } from '../lib/enrollmentService';
 import { supabase } from '../lib/supabase';
 import InlineVideoPlayer from '../components/InlineVideoPlayer';
 import EnrollmentModal from '../components/EnrollmentModal';
 import CourseLessonViewer from '../components/CourseLessonViewer';
 import { useEnrollment } from '../hooks/useEnrollment';
 import { trackMasterclassView } from '../hooks/useVideoViewTracking';
-import { createCertificate, downloadCertificateAsHTML } from '../lib/certificateService';
-import { createInvoice, downloadInvoiceAsHTML } from '../lib/invoiceService';
+import { shouldShowPersonalGrowthCategory, type CourseCurriculum } from '../lib/personalGrowthCourses';
 
 interface CourseDetails {
   id: string;
@@ -30,7 +28,7 @@ interface CourseDetails {
   description: string;
   category: string;
   thumbnail_url: string;
-  content_url: string;
+  content_url: string | null;
   duration: string | null;
   level: string;
   features: string[];
@@ -47,12 +45,14 @@ interface CourseDetails {
   prerequisites?: string;
   target_audience?: string;
   course_price?: number;
+  learning_format?: string;
+  curriculum?: CourseCurriculum;
 }
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { checkEnrollment, getDetails } = useEnrollment();
   const searchParams = new URLSearchParams(window.location.search);
   const autoplay = searchParams.get('autoplay') === 'true';
@@ -61,10 +61,10 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [showVideoPlayer, setShowVideoPlayer] = useState(autoplay);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [enrollmentDetails, setEnrollmentDetails] = useState(null);
+  const [enrollmentDetails, setEnrollmentDetails] = useState<CourseEnrollment | null>(null);
   const { updateProgress } = useEnrollment();
 
   // Fetch course details
@@ -79,12 +79,14 @@ export default function CourseDetailPage() {
         .from('masterclass_page_content')
         .select('*')
         .eq('id', courseId)
+        .eq('status', 'published')
         .single();
 
       if (fetchError) throw fetchError;
-      if (!data) throw new Error('Course not found');
+      if (!data || !shouldShowPersonalGrowthCategory(data.category)) throw new Error('Course not found');
 
       setCourse(data);
+      setShowVideoPlayer(autoplay && Boolean(data.content_url));
 
       // Check if user is enrolled
       if (user) {
@@ -113,7 +115,7 @@ export default function CourseDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [courseId, user, checkEnrollment, getDetails]);
+  }, [courseId, user, checkEnrollment, getDetails, autoplay]);
 
   useEffect(() => {
     fetchCourseDetails();
@@ -227,7 +229,12 @@ export default function CourseDetailPage() {
           {showVideoPlayer ? (
             <InlineVideoPlayer
               isPlaying={showVideoPlayer}
-              content={course}
+              content={{
+                id: course.id,
+                title: course.title,
+                thumbnail_url: course.thumbnail_url,
+                content_url: course.content_url || '',
+              }}
               onClose={() => setShowVideoPlayer(false)}
             />
           ) : (
@@ -237,12 +244,19 @@ export default function CourseDetailPage() {
                 alt={course.title}
                 className="w-full h-full object-cover"
               />
-              <button
-                onClick={handleVideoClick}
-                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hover:bg-black/50"
-              >
-                <Play className="w-16 h-16 text-white" />
-              </button>
+              {course.content_url ? (
+                <button
+                  onClick={handleVideoClick}
+                  className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 transition-opacity hover:bg-black/50 group-hover:opacity-100"
+                  aria-label={`Play ${course.title}`}
+                >
+                  <Play className="h-16 w-16 text-white" />
+                </button>
+              ) : (
+                <div className="absolute bottom-4 left-4 rounded-full border border-white/20 bg-slate-950/75 px-3 py-1.5 text-sm text-white backdrop-blur">
+                  Text-first learning path
+                </div>
+              )}
 
               {/* Bookmark & Premium Badges */}
               <div className="absolute top-4 right-4 flex gap-3 z-10">
@@ -396,29 +410,47 @@ export default function CourseDetailPage() {
             <div className="glass-effect p-6 rounded-2xl">
               <h2 className="text-2xl font-bold text-white mb-4">Course Structure</h2>
               <div className="space-y-3">
-                {course.lessons_count > 0 ? (
+                {course.curriculum?.lessons.length ? (
                   <>
                     <div className="flex items-center gap-3 p-4 bg-purple-400/10 rounded-lg">
                       <BookOpen className="w-6 h-6 text-purple-400" />
                       <div>
-                        <p className="text-white font-semibold">
-                          {course.lessons_count} Lessons
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          {course.duration || 'Duration TBA'}
-                        </p>
+                        <p className="text-white font-semibold">{course.curriculum.lessons.length} lessons · {course.learning_format || 'Self-paced course'}</p>
+                        <p className="text-gray-400 text-sm">{course.duration || 'Duration TBA'}</p>
                       </div>
                     </div>
+                    <ol className="space-y-3">
+                      {course.curriculum.lessons.map((lesson, index) => (
+                        <li key={lesson.title} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <p className="font-medium text-white">{index + 1}. {lesson.title}</p>
+                            <span className="text-xs text-gray-400">{lesson.duration}</span>
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-gray-300">{lesson.description}</p>
+                          <p className="mt-3 text-sm leading-6 text-purple-200"><span className="font-semibold">Practice:</span> {lesson.practice}</p>
+                        </li>
+                      ))}
+                    </ol>
+                    {course.curriculum.resources.length > 0 && (
+                      <div className="border-t border-white/10 pt-4">
+                        <h3 className="mb-2 text-sm font-semibold text-white">Research & recommended learning</h3>
+                        <ul className="space-y-2">
+                          {course.curriculum.resources.map((resource) => (
+                            <li key={resource.url}>
+                              <a href={resource.url} target="_blank" rel="noreferrer" className="text-sm text-sky-300 underline decoration-sky-300/40 underline-offset-4 hover:text-sky-200">{resource.type === 'course' ? 'Recommended course: ' : ''}{resource.title}</a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {isEnrolled && (
-                      <div className="mt-4 p-4 bg-blue-400/10 rounded-lg">
-                        <p className="text-blue-300 text-sm">
-                          ✓ You have access to all {course.lessons_count} lessons
-                        </p>
+                      <div className="mt-4 rounded-lg bg-blue-400/10 p-4">
+                        <p className="text-sm text-blue-300">You have access to all {course.curriculum.lessons.length} lessons.</p>
                       </div>
                     )}
                   </>
                 ) : (
-                  <p className="text-gray-400">Course structure details coming soon</p>
+                  <p className="text-gray-400">This course does not have a published lesson plan yet.</p>
                 )}
               </div>
             </div>
@@ -440,6 +472,7 @@ export default function CourseDetailPage() {
               <CourseLessonViewer
                 courseId={course.id}
                 courseLessonsCount={course.lessons_count || 0}
+                curriculum={course.curriculum}
                 enrollmentProgress={{
                   lessons_completed: enrollmentDetails?.lessons_completed || 0,
                   progress_percentage: enrollmentDetails?.progress_percentage || 0,

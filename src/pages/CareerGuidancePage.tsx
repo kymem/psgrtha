@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, Users, Briefcase, TrendingUp, Award } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { shouldShowPersonalGrowthCategory } from '../lib/personalGrowthCourses';
 
 interface CourseDetails {
   id: string;
@@ -39,10 +40,11 @@ export default function CareerGuidancePage() {
         .from('masterclass_page_content')
         .select('id, title, creator, category, thumbnail_url, description')
         .eq('id', courseId)
+        .eq('status', 'published')
         .single();
 
       if (fetchError) throw fetchError;
-      if (!data) throw new Error('Course not found');
+      if (!data || !shouldShowPersonalGrowthCategory(data.category)) throw new Error('Course not found');
 
       setCourse(data);
     } catch (err) {
