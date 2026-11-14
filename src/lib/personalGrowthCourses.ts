@@ -89,6 +89,28 @@ const learningHowToLearnCourse = {
 // Placeholder test clip; replace with real lesson videos before publishing.
 const placeholderLessonVideoUrl = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4';
 
+const protesilaosSelfImprovementVideoUrl = 'https://archive.org/download/prot-books-2022-10-21-self-improvement/prot-books-2022-10-21-self-improvement-EJOoBWcFdio.mp4';
+const navyMindfulnessStressVideoUrl = 'https://archive.org/download/22-0005-063-dod-108974779/22-0005-063%20%28DOD_108974779%29.mp4';
+const npsThreeMinutesMindfulnessVideoUrl = 'https://archive.org/download/nps-video-tuma-three-minutes-of-mindfulness/tuma-ThreeMinutesofMindfulnessFINAL1_1280x720.mp4';
+
+const protesilaosVideoCredit = {
+  title: 'Video: "On self-improvement" by Protesilaos Stavrou (CC BY-SA 4.0, Internet Archive)',
+  url: 'https://archive.org/details/prot-books-2022-10-21-self-improvement',
+  type: 'reference' as const,
+};
+
+const navyVideoCredit = {
+  title: 'Video: "U.S. Navy Surgeon General Discusses Mindfulness and Stress" (U.S. Navy, public domain, Internet Archive)',
+  url: 'https://archive.org/details/22-0005-063-dod-108974779',
+  type: 'reference' as const,
+};
+
+const npsVideoCredit = {
+  title: 'Video: "Three Minutes of Mindfulness" (National Park Service, public domain, Internet Archive)',
+  url: 'https://archive.org/details/nps-video-tuma-three-minutes-of-mindfulness',
+  type: 'reference' as const,
+};
+
 export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
   {
     id: 'self-leadership-foundations',
@@ -108,9 +130,10 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     prerequisites: 'No prior experience required. Bring a notebook or digital journal.',
     target_audience: 'Anyone who wants more self-understanding and a practical, self-directed next step.',
     thumbnail_url: 'https://images.pexels.com/photos/7984912/pexels-photo-7984912.jpeg',
+    intro_video_url: protesilaosSelfImprovementVideoUrl,
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference, motivationReference, hkustPersonalGrowthCourse],
+      resources: [lifeSkillsReference, motivationReference, hkustPersonalGrowthCourse, protesilaosVideoCredit],
       lessons: [
         {
           title: 'Start with the life you are actually living',
@@ -171,7 +194,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     thumbnail_url: 'https://images.pexels.com/photos/40080146/pexels-photo-40080146.jpeg',
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference, motivationReference, yaleWellbeingCourse],
+      resources: [lifeSkillsReference, motivationReference, yaleWellbeingCourse, navyVideoCredit, npsVideoCredit],
       lessons: [
         {
           title: 'Emotions as information',
@@ -184,12 +207,14 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
           duration: '35 min',
           description: 'Map common stressors alongside early cues in attention, body, mood, and behavior. Separate what is within your influence from what is not. This map helps identify a useful next step and a realistic support, rather than implying every stressor can be removed by individual effort.',
           practice: 'Complete a stress map with three common triggers, your early signals, one controllable response, and one person or service you can contact when needed.',
+          video_url: navyMindfulnessStressVideoUrl,
         },
         {
           title: 'Pause, orient, and choose',
           duration: '30 min',
           description: 'Practice a short, optional pause: notice your feet or surroundings, lengthen an exhale if comfortable, name what is happening, and select one next action. Grounding is a general attention skill; stop or adapt it if it feels uncomfortable and choose another safe way to orient.',
           practice: 'Try a 60-second orienting pause during a low-pressure moment. Write down what changed, what did not, and whether you would use a different grounding choice next time.',
+          video_url: npsThreeMinutesMindfulnessVideoUrl,
         },
         {
           title: 'Check the story against the facts',
