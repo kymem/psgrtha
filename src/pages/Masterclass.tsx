@@ -41,7 +41,13 @@ import ContentCountdownTimer from '../components/ContentCountdownTimer';
 import VideoUploadWithMuxForMasterclass from '../components/VideoUploadWithMuxForMasterclass';
 import EnrollmentModal from '../components/EnrollmentModal';
 import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
-import { PERSONAL_GROWTH_BLUEPRINTS, type CourseCurriculum, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
+import {
+  PERSONAL_GROWTH_BLUEPRINTS,
+  isPersonalGrowthEnabled,
+  shouldShowPersonalGrowthCategory,
+  type CourseCurriculum,
+  type PersonalGrowthBlueprint,
+} from '../lib/personalGrowthCourses';
 
 type ViewMode = 'courses' | 'workshops' | 'learning' | 'teaching' | 'mentorship';
 type LayoutMode = 'grid' | 'list';
@@ -92,13 +98,15 @@ type Workshop = {
 export default function Masterclass() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const personalGrowthEnabled = isPersonalGrowthEnabled();
+  const defaultCourseCategory = personalGrowthEnabled ? 'personal-growth' : 'professional-development';
   const [isAdmin] = useState(user?.email ? isUserAdmin(user.email) : false);
   const { draggedItem, handleDragStart, handleDragOver, handleDrop, handleDragEnd, saveOrderToDatabase } = useDragReorder();
   const preloadedData = usePreloadedData();
 
   const [viewMode, setViewMode] = useState<ViewMode>('courses');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
-  const [activeCategory, setActiveCategory] = useState('personal-growth');
+  const [activeCategory, setActiveCategory] = useState(personalGrowthEnabled ? 'personal-growth' : 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'all' | 'popular' | 'newest' | 'highest-rated'>('all');
   const [bookmarkedCourseIds, setBookmarkedCourseIds] = useState<string[]>([]);
@@ -111,7 +119,7 @@ export default function Masterclass() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('personal-growth');
+  const [uploadCategory, setUploadCategory] = useState(defaultCourseCategory);
   const [uploadLearningFormat, setUploadLearningFormat] = useState('Self-paced course');
   const [uploadCurriculum, setUploadCurriculum] = useState<CourseCurriculum>({ version: 1, lessons: [], resources: [] });
   const [uploadPrerequisites, setUploadPrerequisites] = useState('');
@@ -203,9 +211,9 @@ export default function Masterclass() {
       'business-development',
       'professional-development',
       'personal-development',
-      'personal-growth'
+      ...(personalGrowthEnabled ? ['personal-growth'] : []),
     ],
-    []
+    [personalGrowthEnabled]
   );
 
   function getCategoryLabel(category: string): string {
@@ -237,8 +245,9 @@ export default function Masterclass() {
 
       if (error) throw error;
       if (data) {
+        const visibleCourses: ContentItem[] = data.filter((item: ContentItem) => shouldShowPersonalGrowthCategory(item.category));
         // Prefetch all thumbnail URLs to prevent image flicker when updating state
-        const prefetchPromises = data.map(
+        const prefetchPromises = visibleCourses.map(
           (item) =>
             new Promise<void>((resolve) => {
               const img = new Image();
@@ -249,14 +258,14 @@ export default function Masterclass() {
         );
         await Promise.all(prefetchPromises);
 
-        setCourseContent(data);
+        setCourseContent(visibleCourses);
         // Cache for instant load next time (localStorage for persistence)
         try {
-          localStorage.setItem('masterclass_content_thumbnails', JSON.stringify(data));
+          localStorage.setItem('masterclass_content_thumbnails', JSON.stringify(visibleCourses));
         } catch (e) {
           // localStorage might be full, ignore
         }
-        sessionStorage.setItem('masterclass_content_cache', JSON.stringify(data));
+        sessionStorage.setItem('masterclass_content_cache', JSON.stringify(visibleCourses));
       }
     } catch (err) {
       console.error('Error fetching course content:', err);
@@ -276,7 +285,7 @@ export default function Masterclass() {
 
       if (error) throw error;
       if (data) {
-        setUserCourses(data);
+        setUserCourses(data.filter((item) => shouldShowPersonalGrowthCategory(item.category)));
       }
     } catch (err) {
       console.error('Error fetching user courses:', err);
@@ -308,7 +317,7 @@ export default function Masterclass() {
       if (error) throw error;
 
       // Merge enrollment data with course data
-      const merged = courses?.map((course) => {
+      const merged = courses?.filter((course) => shouldShowPersonalGrowthCategory(course.category)).map((course) => {
         const enrollment = enrollments.find((e: any) => e.course_id === course.id);
         return {
           ...course,
@@ -570,6 +579,7 @@ export default function Masterclass() {
   };
 
   const applyGrowthBlueprint = (blueprint: PersonalGrowthBlueprint) => {
+    if (!personalGrowthEnabled) return;
     if (!user) {
       navigate('/signin');
       return;
@@ -602,6 +612,11 @@ export default function Masterclass() {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!shouldShowPersonalGrowthCategory(uploadCategory)) {
+      setUploadError('Personal Growth content is not available on this platform');
+      return;
+    }
 
     if (!user || !profile) {
       setUploadError('You must be logged in to upload content');
@@ -715,7 +730,7 @@ export default function Masterclass() {
       setUploadThumbnail(null);
       setUploadThumbnailPreview(null);
       setUploadResourceFiles([]);
-      setUploadCategory('personal-growth');
+      setUploadCategory(defaultCourseCategory);
       setUploadLearningFormat('Self-paced course');
       setUploadCurriculum({ version: 1, lessons: [], resources: [] });
       setUploadPrerequisites('');
@@ -750,7 +765,7 @@ export default function Masterclass() {
   };
 
   const workshops = useMemo<Workshop[]>(
-    () => PERSONAL_GROWTH_BLUEPRINTS
+    () => personalGrowthEnabled ? PERSONAL_GROWTH_BLUEPRINTS
       .filter((blueprint) => ['Applied workshop', 'Guided class'].includes(blueprint.learning_format))
       .map((blueprint) => ({
         id: blueprint.id,
@@ -764,13 +779,14 @@ export default function Masterclass() {
         description: blueprint.description,
         lessonsCount: blueprint.curriculum.lessons.length,
         blueprintId: blueprint.id,
-      })),
-    []
+      })) : [],
+    [personalGrowthEnabled]
   );
 
   const filteredCourses = useMemo(() => {
     const categoryValue = activeCategory;
     return courseContent.filter((course) => {
+      const matchesPlatform = shouldShowPersonalGrowthCategory(course.category);
       const matchesCategory = categoryValue === 'all' || course.category === categoryValue;
       const loweredQuery = searchQuery.toLowerCase();
       const matchesSearch =
@@ -778,7 +794,7 @@ export default function Masterclass() {
         course.title.toLowerCase().includes(loweredQuery) ||
         course.creator.toLowerCase().includes(loweredQuery) ||
         course.description.toLowerCase().includes(loweredQuery);
-      return matchesCategory && matchesSearch;
+      return matchesPlatform && matchesCategory && matchesSearch;
     });
   }, [courseContent, activeCategory, searchQuery]);
 
@@ -1120,7 +1136,9 @@ export default function Masterclass() {
           <div>
             <h1 className="text-4xl font-playfair font-bold text-white mb-2">Masterclass</h1>
             <p className="text-gray-300">
-              Practical learning for self-awareness, resilience, habits, decision-making, and stronger relationships.
+              {personalGrowthEnabled
+                ? 'Practical learning for self-awareness, resilience, habits, decision-making, and stronger relationships.'
+                : 'Explore courses and learning resources for professional development.'}
             </p>
           </div>
 
@@ -1227,7 +1245,7 @@ export default function Masterclass() {
 
         {viewMode === 'courses' && (
           <>
-            <PersonalGrowthShowcase onPrepare={applyGrowthBlueprint} />
+            {personalGrowthEnabled && <PersonalGrowthShowcase onPrepare={applyGrowthBlueprint} />}
             <div className={courseContainerClass}>
             {sortedCourses.length > 0 ? (
               sortedCourses.map((course) => {
@@ -1608,7 +1626,7 @@ export default function Masterclass() {
             </div>
 
             <div className="mb-8 grid gap-6 md:grid-cols-2">
-              {PERSONAL_GROWTH_BLUEPRINTS.filter((blueprint) => blueprint.learning_format === 'Mentorship series').map((blueprint) => (
+              {personalGrowthEnabled && PERSONAL_GROWTH_BLUEPRINTS.filter((blueprint) => blueprint.learning_format === 'Mentorship series').map((blueprint) => (
                 <article key={blueprint.id} className="glass-effect rounded-2xl p-6">
                   <span className="rounded-full bg-purple-400/20 px-3 py-1 text-xs font-medium text-purple-200">{blueprint.track}</span>
                   <h3 className="mt-4 text-xl font-semibold text-white">{blueprint.title}</h3>
@@ -1730,7 +1748,7 @@ export default function Masterclass() {
                   setUploadResourceFiles([]);
                   setUploadVideoPlaybackId(null);
                   setUploadVideoId(null);
-                  setUploadCategory('personal-growth');
+                  setUploadCategory(defaultCourseCategory);
                   setUploadLearningFormat('Self-paced course');
                   setUploadCurriculum({ version: 1, lessons: [], resources: [] });
                   setUploadPrerequisites('');
@@ -1896,7 +1914,7 @@ export default function Masterclass() {
                   <option value="business-development" className="bg-gray-800">Business Development</option>
                   <option value="professional-development" className="bg-gray-800">Professional Development</option>
                   <option value="personal-development" className="bg-gray-800">Personal Development</option>
-                  <option value="personal-growth" className="bg-gray-800">Personal Growth</option>
+                  {personalGrowthEnabled && <option value="personal-growth" className="bg-gray-800">Personal Growth</option>}
                 </select>
               </div>
 

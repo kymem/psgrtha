@@ -33,6 +33,14 @@ export interface PersonalGrowthBlueprint {
   curriculum: CourseCurriculum;
 }
 
+const legacyFlourishHosts = new Set(['flourishtalents.com', 'www.flourishtalents.com']);
+
+export const isPersonalGrowthEnabled = () =>
+  typeof window === 'undefined' || !legacyFlourishHosts.has(window.location.hostname.toLowerCase());
+
+export const shouldShowPersonalGrowthCategory = (category?: string | null) =>
+  isPersonalGrowthEnabled() || category?.trim().toLowerCase() !== 'personal-growth';
+
 const lifeSkillsReference = {
   title: 'WHO life-skills education guide',
   url: 'https://iris.who.int/bitstream/handle/10665/331948/9789240004849-eng.pdf',

@@ -19,7 +19,7 @@ import EnrollmentModal from '../components/EnrollmentModal';
 import CourseLessonViewer from '../components/CourseLessonViewer';
 import { useEnrollment } from '../hooks/useEnrollment';
 import { trackMasterclassView } from '../hooks/useVideoViewTracking';
-import type { CourseCurriculum } from '../lib/personalGrowthCourses';
+import { shouldShowPersonalGrowthCategory, type CourseCurriculum } from '../lib/personalGrowthCourses';
 
 interface CourseDetails {
   id: string;
@@ -82,7 +82,7 @@ export default function CourseDetailPage() {
         .single();
 
       if (fetchError) throw fetchError;
-      if (!data) throw new Error('Course not found');
+      if (!data || !shouldShowPersonalGrowthCategory(data.category)) throw new Error('Course not found');
 
       setCourse(data);
       setShowVideoPlayer(autoplay && Boolean(data.content_url));
