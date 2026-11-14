@@ -38,7 +38,8 @@ import { useMediaPageLike, useMediaPageFollow } from '../hooks/useMediaPageInter
 import { useEnrollment } from '../hooks/useEnrollment';
 import EditMasterclassContentModal from '../components/EditMasterclassContentModal';
 import ContentCountdownTimer from '../components/ContentCountdownTimer';
-import VideoUploadWithMuxForMasterclass from '../components/VideoUploadWithMuxForMasterclass';
+import MasterclassVideoSource from '../components/MasterclassVideoSource';
+import { toMuxStreamUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 import EnrollmentModal from '../components/EnrollmentModal';
 import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
 import PersonalGrowthPrograms from '../components/PersonalGrowthPrograms';
@@ -50,17 +51,6 @@ import {
   type CourseCurriculum,
   type PersonalGrowthBlueprint,
 } from '../lib/personalGrowthCourses';
-
-const getMuxStreamUrl = (input: string) => {
-  try {
-    const url = new URL(input.trim());
-    if (url.protocol !== 'https:' || url.hostname !== 'stream.mux.com') return null;
-    const playbackId = url.pathname.match(/^\/([A-Za-z0-9]+)(?:\.m3u8)?$/)?.[1];
-    return playbackId ? `https://stream.mux.com/${playbackId}.m3u8${url.search}` : null;
-  } catch {
-    return null;
-  }
-};
 
 type ViewMode = 'courses' | 'workshops' | 'learning' | 'teaching' | 'mentorship';
 type LayoutMode = 'grid' | 'list';
@@ -148,9 +138,7 @@ export default function Masterclass() {
   const [uploadThumbnailMode, setUploadThumbnailMode] = useState<'upload' | 'url'>('upload');
   const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState('');
   const [uploadThumbnailDragActive, setUploadThumbnailDragActive] = useState(false);
-  const [uploadVideoMode, setUploadVideoMode] = useState<'upload' | 'url'>('upload');
-  const [uploadVideoUrl, setUploadVideoUrl] = useState('');
-  const [lessonVideoUrls, setLessonVideoUrls] = useState<Record<number, string>>({});
+  const [lessonVideos, setLessonVideos] = useState<Record<number, ProcessedVideo>>({});
   const [uploadCurrency, setUploadCurrency] = useState('UGX');
   const [userCourses, setUserCourses] = useState<ContentItem[]>([]);
   const [loadingUserCourses, setLoadingUserCourses] = useState(true);
@@ -596,7 +584,7 @@ export default function Masterclass() {
     setUploadCategory('personal-growth');
     setUploadLearningFormat(blueprint.learning_format);
     setUploadCurriculum(blueprint.curriculum);
-    setLessonVideoUrls({});
+    setLessonVideos({});
     setUploadPrerequisites(blueprint.prerequisites);
     setUploadTargetAudience(blueprint.target_audience);
     setUploadCourseDuration(blueprint.duration);
@@ -606,7 +594,6 @@ export default function Masterclass() {
     setUploadLessons(String(blueprint.curriculum.lessons.length));
     setUploadThumbnailMode('url');
     setUploadThumbnailUrl(blueprint.thumbnail_url);
-    setUploadVideoMode('upload');
     setUploadVideoPlaybackId(null);
     setUploadVideoId(null);
     setUploadVideoDuration(null);
@@ -635,17 +622,7 @@ export default function Masterclass() {
       return;
     }
 
-    let finalVideoUrl = '';
-    if (uploadVideoMode === 'upload' && uploadVideoPlaybackId && uploadVideoId) {
-      finalVideoUrl = `https://stream.mux.com/${uploadVideoPlaybackId}.m3u8`;
-    } else if (uploadVideoMode === 'url' && uploadVideoUrl.trim()) {
-      const muxStreamUrl = getMuxStreamUrl(uploadVideoUrl);
-      if (!muxStreamUrl) {
-        setUploadError('Enter a Mux playback URL from stream.mux.com.');
-        return;
-      }
-      finalVideoUrl = muxStreamUrl;
-    }
+    const introVideoUrl = uploadVideoPlaybackId ? toMuxStreamUrl(uploadVideoPlaybackId) : null;
 
     // Validate thumbnail (either uploaded or URL)
     let finalThumbnailUrl = '';
@@ -690,10 +667,14 @@ export default function Masterclass() {
       }));
       const finalCurriculum = {
         ...uploadCurriculum,
+        lessons: uploadCurriculum.lessons.map((lesson, index) => {
+          const video = lessonVideos[index];
+          return video
+            ? { ...lesson, content_url: toMuxStreamUrl(video.playbackId), video_upload_id: video.videoUploadId }
+            : lesson;
+        }),
         resources: [...uploadCurriculum.resources, ...uploadedResources],
       };
-
-      const muxStreamUrl = finalVideoUrl;
 
       const { error: insertError } = await supabase.from('masterclass_page_content').insert([
         {
@@ -702,7 +683,7 @@ export default function Masterclass() {
           creator: profile.name,
           description: uploadDescription || null,
           thumbnail_url: finalThumbnailUrl,
-          content_url: muxStreamUrl || null,
+          content_url: introVideoUrl,
           type: 'course-material',
           category: uploadCategory || null,
           duration: uploadVideoDuration || uploadCourseDuration || null,
@@ -714,7 +695,7 @@ export default function Masterclass() {
           curriculum: finalCurriculum,
           prerequisites: uploadPrerequisites || null,
           target_audience: uploadTargetAudience || null,
-          video_upload_id: uploadVideoMode === 'upload' ? uploadVideoId : null,
+          video_upload_id: uploadVideoId,
           course_price: uploadPrice || 0,
           course_currency: uploadCurrency,
           views_count: 0,
@@ -752,8 +733,7 @@ export default function Masterclass() {
       setUploadThumbnailMode('upload');
       setUploadThumbnailUrl('');
       setUploadThumbnailDragActive(false);
-      setUploadVideoMode('upload');
-      setUploadVideoUrl('');
+      setLessonVideos({});
       setUploadCurrency('UGX');
 
       // Refresh course content
@@ -1601,6 +1581,7 @@ export default function Masterclass() {
                   setUploadResourceFiles([]);
                   setUploadVideoPlaybackId(null);
                   setUploadVideoId(null);
+                  setLessonVideos({});
                   setUploadCategory(defaultCourseCategory);
                   setUploadLearningFormat('Self-paced course');
                   setUploadCurriculum({ version: 1, lessons: [], resources: [] });
@@ -1619,8 +1600,6 @@ export default function Masterclass() {
                   setUploadThumbnailMode('upload');
                   setUploadThumbnailUrl('');
                   setUploadThumbnailDragActive(false);
-                  setUploadVideoMode('upload');
-                  setUploadVideoUrl('');
                   setUploadCurrency('UGX');
                 }}
                 className="p-1 hover:bg-gray-800 rounded transition-colors"
@@ -1688,6 +1667,20 @@ export default function Masterclass() {
                         </div>
                         <p className="mt-2 text-sm leading-6 text-gray-300">{lesson.description}</p>
                         <p className="mt-2 text-sm leading-6 text-purple-200"><span className="font-semibold">Practice:</span> {lesson.practice}</p>
+                        <div className="mt-4 border-t border-white/10 pt-4">
+                          <p className="mb-3 text-sm font-medium text-white">Lesson video (optional)</p>
+                          <MasterclassVideoSource
+                            userId={user!.id}
+                            onReady={(video) => setLessonVideos((prev) => ({ ...prev, [index]: video }))}
+                            onCleared={() =>
+                              setLessonVideos((prev) => {
+                                const next = { ...prev };
+                                delete next[index];
+                                return next;
+                              })
+                            }
+                          />
+                        </div>
                       </li>
                     ))}
                   </ol>
@@ -2064,55 +2057,19 @@ export default function Masterclass() {
                 <label className="block text-sm font-medium text-white mb-2">Course intro video</label>
                 <p className="text-xs text-gray-400 mb-3">Optional. Your complete structured lesson plan is included; add video now or later.</p>
 
-                {/* Mode Selection */}
-                <div className="flex gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setUploadVideoMode('upload')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      uploadVideoMode === 'upload'
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    Upload File
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUploadVideoMode('url')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      uploadVideoMode === 'url'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    Use URL
-                  </button>
-                </div>
-
-                {uploadVideoMode === 'upload' ? (
-                  <VideoUploadWithMuxForMasterclass
-                    userId={user!.id}
-                    onVideoSelected={(playbackId, videoUploadId, duration) => {
-                      setUploadVideoPlaybackId(playbackId);
-                      setUploadVideoId(videoUploadId);
-                      setUploadVideoDuration(duration || null);
-                    }}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-xs text-gray-400">
-                      Enter a Mux stream URL (e.g., https://stream.mux.com/PLAYBACK_ID.m3u8)
-                    </p>
-                    <input
-                      type="url"
-                      value={uploadVideoUrl}
-                      onChange={(e) => setUploadVideoUrl(e.target.value)}
-                      placeholder="https://stream.mux.com/..."
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
-                    />
-                  </div>
-                )}
+                <MasterclassVideoSource
+                  userId={user!.id}
+                  onReady={(video) => {
+                    setUploadVideoPlaybackId(video.playbackId);
+                    setUploadVideoId(video.videoUploadId);
+                    setUploadVideoDuration(video.duration || null);
+                  }}
+                  onCleared={() => {
+                    setUploadVideoPlaybackId(null);
+                    setUploadVideoId(null);
+                    setUploadVideoDuration(null);
+                  }}
+                />
               </div>
 
               {/* Error Message */}

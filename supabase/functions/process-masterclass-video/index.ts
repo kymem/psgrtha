@@ -29,29 +29,50 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { filename, userId } = await req.json();
+    const { filename, userId, videoUrl } = await req.json();
 
-    if (!filename || !userId) {
-      return new Response(JSON.stringify({ error: 'Missing filename or userId' }), {
+    if (!userId || (!filename && !videoUrl)) {
+      return new Response(JSON.stringify({ error: 'Missing filename/videoUrl or userId' }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Construct public B2 URL directly (no signed URL needed for public bucket)
-    let publicB2Url: string;
+    let sourceUrl: string;
+    let sourceName: string;
 
-    if (B2_PUBLIC_URL && B2_PUBLIC_URL.trim()) {
-      const publicBase = B2_PUBLIC_URL.replace(/\/$/, '');
-      publicB2Url = `${publicBase}/${B2_BUCKET_NAME}/${filename}`;
+    if (videoUrl) {
+      let parsed: URL;
+      try {
+        parsed = new URL(videoUrl);
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid video URL' }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      if (parsed.protocol !== 'https:') {
+        return new Response(JSON.stringify({ error: 'Video URL must use https' }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      sourceUrl = parsed.toString();
+      sourceName = parsed.pathname.split('/').pop() || 'video-url';
     } else {
-      // Fallback: construct S3 path-hosted style URL
-      publicB2Url = `https://s3.eu-central-003.backblazeb2.com/${B2_BUCKET_NAME}/${filename}`;
+      // Construct public B2 URL directly (no signed URL needed for public bucket)
+      if (B2_PUBLIC_URL && B2_PUBLIC_URL.trim()) {
+        const publicBase = B2_PUBLIC_URL.replace(/\/$/, '');
+        sourceUrl = `${publicBase}/${B2_BUCKET_NAME}/${filename}`;
+      } else {
+        // Fallback: construct S3 path-hosted style URL
+        sourceUrl = `https://s3.eu-central-003.backblazeb2.com/${B2_BUCKET_NAME}/${filename}`;
+      }
+      sourceName = filename;
     }
 
-    // Validate URL
-    if (publicB2Url.includes('undefined') || publicB2Url.includes('null')) {
-      console.error('Invalid URL constructed:', publicB2Url);
+    if (sourceUrl.includes('undefined') || sourceUrl.includes('null')) {
+      console.error('Invalid URL constructed:', sourceUrl);
       return new Response(
         JSON.stringify({
           error: 'Failed to construct valid public URL. Configuration may be incomplete.'
@@ -70,7 +91,7 @@ Deno.serve(async (req) => {
         Authorization: "Basic " + btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`)
       },
       body: JSON.stringify({
-        input: { url: publicB2Url },
+        input: { url: sourceUrl },
         playback_policy: ["public"]
       })
     });
@@ -91,8 +112,8 @@ Deno.serve(async (req) => {
       .insert([
         {
           user_id: userId,
-          filename: filename,
-          b2_url: publicB2Url,
+          filename: sourceName,
+          b2_url: sourceUrl,
           asset_id: assetId,
           status: 'processing'
         }

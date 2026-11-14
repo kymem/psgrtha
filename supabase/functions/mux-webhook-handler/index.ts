@@ -22,14 +22,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing playback ID' }), { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
-      .from('video_uploads')
-      .update({
-        playback_id: playbackId,
-        status: 'ready'
-      })
-      .eq('asset_id', assetId);
+    const results = await Promise.all([
+      supabaseAdmin.from('video_uploads').update({ playback_id: playbackId, status: 'ready' }).eq('asset_id', assetId),
+      supabaseAdmin.from('masterclass_video_uploads').update({ playback_id: playbackId, status: 'ready' }).eq('asset_id', assetId),
+    ]);
 
+    const error = results.find((result) => result.error)?.error;
     if (error) {
       console.error("Database update error:", error);
       return new Response(JSON.stringify({ error: error.message }), { status: 500 });
@@ -42,6 +40,23 @@ Deno.serve(async (req) => {
       assetId,
       playbackId
     }), { status: 200 });
+  }
+
+  if (data.type === 'video.asset.errored') {
+    const assetId = data.data.id;
+
+    const results = await Promise.all([
+      supabaseAdmin.from('video_uploads').update({ status: 'failed' }).eq('asset_id', assetId),
+      supabaseAdmin.from('masterclass_video_uploads').update({ status: 'failed' }).eq('asset_id', assetId),
+    ]);
+
+    const error = results.find((result) => result.error)?.error;
+    if (error) {
+      console.error("Database update error:", error);
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ status: 'marked failed', assetId }), { status: 200 });
   }
 
   return new Response(JSON.stringify({ status: `ignored event type: ${data.type}` }), { status: 200 });
