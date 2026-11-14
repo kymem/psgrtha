@@ -1,20 +1,37 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Loader, X } from 'lucide-react';
 import VideoUploadWithMuxForMasterclass from './VideoUploadWithMuxForMasterclass';
 import { ingestVideoUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 
 interface MasterclassVideoSourceProps {
   userId: string;
+  initialUrl?: string;
+  processingSlot?: string;
   onReady: (video: ProcessedVideo) => void;
   onCleared: () => void;
+  onProcessingChange?: (slot: string, isProcessing: boolean) => void;
 }
 
-export default function MasterclassVideoSource({ userId, onReady, onCleared }: MasterclassVideoSourceProps) {
-  const [mode, setMode] = useState<'upload' | 'url'>('upload');
-  const [url, setUrl] = useState('');
+export default function MasterclassVideoSource({
+  userId,
+  initialUrl,
+  processingSlot,
+  onReady,
+  onCleared,
+  onProcessingChange,
+}: MasterclassVideoSourceProps) {
+  const [mode, setMode] = useState<'upload' | 'url'>(initialUrl ? 'url' : 'upload');
+  const [url, setUrl] = useState(initialUrl ?? '');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUrlReady, setIsUrlReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoStarted = useRef(false);
+
+  useEffect(() => {
+    if (!processingSlot || !onProcessingChange) return;
+    onProcessingChange(processingSlot, isProcessing);
+    return () => onProcessingChange(processingSlot, false);
+  }, [isProcessing, processingSlot, onProcessingChange]);
 
   function switchMode(nextMode: 'upload' | 'url') {
     setMode(nextMode);
@@ -24,10 +41,10 @@ export default function MasterclassVideoSource({ userId, onReady, onCleared }: M
     onCleared();
   }
 
-  async function handleProcessUrl() {
+  const processUrl = useCallback(async (rawUrl: string) => {
     let parsed: URL;
     try {
-      parsed = new URL(url.trim());
+      parsed = new URL(rawUrl.trim());
     } catch {
       setError('Enter a valid video URL.');
       return;
@@ -48,7 +65,13 @@ export default function MasterclassVideoSource({ userId, onReady, onCleared }: M
     } finally {
       setIsProcessing(false);
     }
-  }
+  }, [onReady]);
+
+  useEffect(() => {
+    if (!initialUrl || autoStarted.current) return;
+    autoStarted.current = true;
+    void processUrl(initialUrl);
+  }, [initialUrl, processUrl]);
 
   function clearUrl() {
     setUrl('');
@@ -112,7 +135,7 @@ export default function MasterclassVideoSource({ userId, onReady, onCleared }: M
             />
             <button
               type="button"
-              onClick={handleProcessUrl}
+              onClick={() => processUrl(url)}
               disabled={isProcessing || !url.trim()}
               className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm transition-all disabled:opacity-50 flex items-center gap-2"
             >

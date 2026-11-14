@@ -3,6 +3,7 @@ export interface CourseLesson {
   duration: string;
   description: string;
   practice: string;
+  video_url?: string;
   content_url?: string;
   thumbnail_url?: string;
   video_upload_id?: string;
@@ -83,6 +84,9 @@ const learningHowToLearnCourse = {
   url: 'https://www.coursera.org/learn/learning-how-to-learn',
   type: 'course' as const,
 };
+
+// Placeholder test clip; replace with real lesson videos before publishing.
+const placeholderLessonVideoUrl = 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4';
 
 export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
   {
@@ -390,36 +394,42 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
       lessons: [
         {
           title: 'Audit where your attention goes',
+          video_url: placeholderLessonVideoUrl,
           duration: '30 min',
           description: 'Start with observation rather than judgment. Notice which apps, tabs, messages, and people pull your attention during a typical day, and which of those pulls you chose. The goal is an accurate picture of your current pattern, so later changes are based on evidence instead of guilt.',
           practice: 'Over one ordinary workday, log each time you switch tasks. Write what you were doing, what triggered the switch, and whether you chose it.',
         },
         {
           title: 'Notice the cost of switching',
+          video_url: placeholderLessonVideoUrl,
           duration: '30 min',
           description: 'Each switch takes time and mental effort, especially when you return to work that required careful thinking. Examine how long it takes you to get back into a task and what you lose in the process. Small switches can add up even when each one feels harmless.',
           practice: 'Choose one task you do often. After an interruption, note how long it takes before you feel oriented again and write the first step you needed to resume.',
         },
         {
           title: 'Design your focus blocks',
+          video_url: placeholderLessonVideoUrl,
           duration: '35 min',
           description: 'A focus block works best with a clear purpose, a realistic length, a defined finish signal, and agreed rules about what can interrupt it. Begin with a block you can protect consistently rather than an ideal day that is hard to repeat. Adjust the length based on what you observe.',
           practice: 'Schedule two 45-minute focus blocks for next week. For each one, write the purpose, the single output you want, the interruption rule, and the signal that tells you it is finished.',
         },
         {
           title: 'Shape the environment, not just the mood',
+          video_url: placeholderLessonVideoUrl,
           duration: '35 min',
           description: 'Your surroundings can make focus easier or harder. Review notification settings, device placement, app layout, and shared spaces. Reducing friction is more reliable than repeatedly resisting a tempting cue, so look for changes that make the focused choice the easier one.',
           practice: 'For one day, turn off non-essential notifications, move one distracting app out of your main view, and note which changes helped and which created new problems.',
         },
         {
           title: 'Capture, pause, and re-enter',
+          video_url: placeholderLessonVideoUrl,
           duration: '35 min',
           description: 'Interruptions will still happen. A capture note lets you park a thought, request, or idea without acting on it immediately. A short re-entry sentence then helps you pick up the original task. This keeps useful ideas without letting every new thought take over your focus.',
           practice: 'Keep a running capture note during one focus block. When something interrupts you, write it down in a few words, then write a re-entry sentence describing your next step.',
         },
         {
           title: 'Review, protect, and adjust your plan',
+          video_url: placeholderLessonVideoUrl,
           duration: '30 min',
           description: 'A weekly review turns focus into a system you can improve. Look at what protected your attention, what broke it, and which adjustment to try next. Communicate your focus times to others when needed. If concentration difficulties significantly affect work, study, or daily life, consider speaking with a qualified professional.',
           practice: 'Complete a one-page focus plan with your two most protected blocks, your top three interruption sources, one environment change, and a date for your next review.',

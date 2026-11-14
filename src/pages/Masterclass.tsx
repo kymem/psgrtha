@@ -139,6 +139,13 @@ export default function Masterclass() {
   const [uploadThumbnailUrl, setUploadThumbnailUrl] = useState('');
   const [uploadThumbnailDragActive, setUploadThumbnailDragActive] = useState(false);
   const [lessonVideos, setLessonVideos] = useState<Record<number, ProcessedVideo>>({});
+  const [curriculumVersion, setCurriculumVersion] = useState(0);
+  const [processingVideos, setProcessingVideos] = useState<Record<string, boolean>>({});
+  const isAnyVideoProcessing = Object.values(processingVideos).some(Boolean);
+  const setVideoProcessing = useCallback(
+    (slot: string, isProcessing: boolean) => setProcessingVideos((prev) => ({ ...prev, [slot]: isProcessing })),
+    []
+  );
   const [uploadCurrency, setUploadCurrency] = useState('UGX');
   const [userCourses, setUserCourses] = useState<ContentItem[]>([]);
   const [loadingUserCourses, setLoadingUserCourses] = useState(true);
@@ -585,6 +592,7 @@ export default function Masterclass() {
     setUploadLearningFormat(blueprint.learning_format);
     setUploadCurriculum(blueprint.curriculum);
     setLessonVideos({});
+    setCurriculumVersion((version) => version + 1);
     setUploadPrerequisites(blueprint.prerequisites);
     setUploadTargetAudience(blueprint.target_audience);
     setUploadCourseDuration(blueprint.duration);
@@ -619,6 +627,11 @@ export default function Masterclass() {
 
     if (!uploadTitle) {
       setUploadError('Title is required');
+      return;
+    }
+
+    if (isAnyVideoProcessing) {
+      setUploadError('Wait for the lesson videos to finish processing before saving');
       return;
     }
 
@@ -1670,7 +1683,11 @@ export default function Masterclass() {
                         <div className="mt-4 border-t border-white/10 pt-4">
                           <p className="mb-3 text-sm font-medium text-white">Lesson video (optional)</p>
                           <MasterclassVideoSource
+                            key={`${index}-${curriculumVersion}`}
                             userId={user!.id}
+                            initialUrl={lesson.video_url}
+                            processingSlot={`lesson-${index}`}
+                            onProcessingChange={setVideoProcessing}
                             onReady={(video) => setLessonVideos((prev) => ({ ...prev, [index]: video }))}
                             onCleared={() =>
                               setLessonVideos((prev) => {
@@ -2089,7 +2106,7 @@ export default function Masterclass() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={uploadLoading}
+                disabled={uploadLoading || isAnyVideoProcessing}
                 className="w-full py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadLoading ? 'Saving course...' : 'Submit course to Supabase'}
