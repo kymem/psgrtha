@@ -111,6 +111,23 @@ const npsVideoCredit = {
   type: 'reference' as const,
 };
 
+const tqlCredit = (id: string, title: string) => ({
+  title: `Video: "${title}" by Boyd Martin (CC BY 4.0, Internet Archive)`,
+  url: `https://archive.org/details/${id}`,
+  type: 'reference' as const,
+});
+
+const tqlMastersVideoUrl = 'https://archive.org/download/tql-masters-r-c/TQL-Masters-r-c.mp4';
+const tqlLadderVideoUrl = 'https://archive.org/download/tql-ladder-r-c/TQL-Ladder-r-c.mp4';
+const tqlResolutionsVideoUrl = 'https://archive.org/download/tql-resolutions-fail-r-c/TQL-Resolutions-Fail-r-c.mp4';
+const tqlPatienceVideoUrl = 'https://archive.org/download/tql-patience-r-c/TQL-Patience-r-c.mp4';
+const tqlSetbacksVideoUrl = 'https://archive.org/download/tql-setbacks-r-c/TQL-Setbacks-r-c.mp4';
+const tqlRelaxingVideoUrl = 'https://archive.org/download/tql-relaxing-falling-r-c/TQL-Relaxing-Falling-r-c.mp4';
+const tqlTriggersVideoUrl = 'https://archive.org/download/tql-triggers-r-c/TQL-Triggers-r-c.mp4';
+const tqlStoryVideoUrl = 'https://archive.org/download/tql-story-not-aware-r-c/TQL-Story-Not-Aware-r-c.mp4';
+const tqlChoiceTrapVideoUrl = 'https://archive.org/download/tql-choice-trap-r-c/TQL-Choice-Trap-r-c.mp4';
+const tqlSilenceVideoUrl = 'https://archive.org/download/tql-silence-c/TQL-Silence-c.mp4';
+
 export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
   {
     id: 'self-leadership-foundations',
@@ -482,40 +499,57 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     intro_video_url: protesilaosSelfImprovementVideoUrl,
     curriculum: {
       version: 1,
-      resources: [motivationReference, goalPlanningReference, learningHowToLearnCourse, protesilaosVideoCredit],
+      resources: [
+        motivationReference,
+        goalPlanningReference,
+        learningHowToLearnCourse,
+        protesilaosVideoCredit,
+        tqlCredit('tql-masters-r-c', 'This Quantum Life #51 - We Are All Masters'),
+        tqlCredit('tql-ladder-r-c', 'This Quantum Life #39 - Building a Ladder to Infinite Possibilities'),
+        tqlCredit('tql-resolutions-fail-r-c', 'This Quantum Life #32 - Why Do Resolutions Fail?'),
+        tqlCredit('tql-patience-r-c', 'This Quantum Life #47 - Patience As A Spiritual Practice'),
+        tqlCredit('tql-setbacks-r-c', 'This Quantum Life #54 - There Are No Setbacks'),
+        tqlCredit('tql-relaxing-falling-r-c', 'This Quantum Life #69 - Relaxing While Falling'),
+      ],
       lessons: [
         {
           title: 'What self-improvement means to you',
+          video_url: tqlMastersVideoUrl,
           duration: '30 min',
           description: 'Define self-improvement as deliberate change toward things you value, not a pursuit of perfection or a comparison with others. Watch the intro talk, then note which ideas feel useful, which feel unclear, and which you want to test in your own life.',
           practice: 'Write your own one-sentence definition of self-improvement. List two things you would like to be different in six months and one thing you would not change.',
         },
         {
           title: 'Choose one area to focus on',
+          video_url: tqlLadderVideoUrl,
           duration: '35 min',
           description: 'Narrow a broad wish like “be better” into one domain, such as sleep, learning, relationships, or work habits. Explain why this area matters now and what a good outcome would look like. A narrow focus makes progress visible and reduces overwhelm.',
           practice: 'Rate five possible areas by importance and readiness. Choose one and write a measurable indicator you can check each week.',
         },
         {
           title: 'Turn a wish into a small behavior',
+          video_url: tqlResolutionsVideoUrl,
           duration: '35 min',
           description: 'Large goals become easier when they are broken into specific behaviors you can start within a day. Describe the smallest version of the change that still counts, and keep the first step small enough to repeat on a difficult day.',
           practice: 'Write one behavior using the format: “On [day/time], I will [small action] for [length].” Make it smaller if you doubt you can complete it.',
         },
         {
           title: 'Track progress without self-criticism',
+          video_url: tqlPatienceVideoUrl,
           duration: '30 min',
           description: 'Simple tracking shows what is working. Record whether you completed the action, what helped, and what got in the way. Treat the record as information for adjusting the plan rather than a score of your worth.',
           practice: 'Track your chosen behavior for seven days using a yes, partly, or no column and one note about the conditions that day.',
         },
         {
           title: 'Adjust when life gets in the way',
+          video_url: tqlSetbacksVideoUrl,
           duration: '35 min',
           description: 'Plans tend to stall for predictable reasons: unclear cues, too much effort, competing priorities, or unrealistic expectations. Identify the most likely reason for a setback and choose one adjustment. Shrinking a habit is often more useful than abandoning it.',
           practice: 'Review your tracking notes and write one adjustment: make the action smaller, change the cue, or change the time. Apply it for the next week.',
         },
         {
           title: 'Build your ongoing improvement routine',
+          video_url: tqlRelaxingVideoUrl,
           duration: '35 min',
           description: 'Sustainable self-improvement combines regular reflection, a few protected practices, and realistic patience. Decide how often you will review progress and what you will do when progress is slow. Plan the next cycle before you finish this course.',
           practice: 'Complete a one-page improvement plan with your focus area, behavior, weekly review date, support person, and first adjustment for the next cycle.',
@@ -544,10 +578,19 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     intro_video_url: navyMindfulnessStressVideoUrl,
     curriculum: {
       version: 1,
-      resources: [lifeSkillsReference, navyVideoCredit, npsVideoCredit],
+      resources: [
+        lifeSkillsReference,
+        navyVideoCredit,
+        npsVideoCredit,
+        tqlCredit('tql-triggers-r-c', 'This Quantum Life #119 - Triggers and Our Responses'),
+        tqlCredit('tql-story-not-aware-r-c', 'This Quantum Life #28 - Are You Living a Story You\'re Not Aware Of?'),
+        tqlCredit('tql-choice-trap-r-c', 'This Quantum Life #13 - The Choice Trap'),
+        tqlCredit('tql-silence-c', 'This Quantum Life #128 - The Fortress of Silence'),
+      ],
       lessons: [
         {
           title: 'Notice how stress shows up',
+          video_url: tqlTriggersVideoUrl,
           duration: '30 min',
           description: 'Stress often appears first as small changes in attention, breathing, muscle tension, mood, or habits. Watch the intro talk, then build a simple map of your own early signals. Noticing them early gives you more options than waiting until stress is overwhelming.',
           practice: 'For three days, note up to three early stress signals and the situation that came before each one.',
@@ -561,18 +604,21 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
         },
         {
           title: 'Attention is a skill you can practice',
+          video_url: tqlStoryVideoUrl,
           duration: '30 min',
           description: 'Attention wanders, and that is normal. Mindfulness practice involves noticing the drift and gently returning to an anchor, such as sounds, your hands, or your breath. Repetition builds the skill over time; a perfectly calm mind is not required.',
           practice: 'Sit or stand comfortably for two minutes and choose one anchor. Each time your attention drifts, note it kindly and return. Record how many times you returned.',
         },
         {
           title: 'Mindfulness at work and at home',
+          video_url: tqlChoiceTrapVideoUrl,
           duration: '30 min',
           description: 'Short practices fit into ordinary routines: before a meeting, after a difficult message, or between tasks. Choose two moments where a brief pause would help and decide in advance what you will do during the pause.',
           practice: 'Plan two specific cues for your pause, such as a time, place, or event. Use each cue at least twice this week.',
         },
         {
           title: 'Build a three-minute routine',
+          video_url: tqlSilenceVideoUrl,
           duration: '35 min',
           description: 'A sustainable routine is more useful than an occasional long session. Combine a brief pause, one attention practice, and a short reflection. Plan an easier version for busy or difficult days. If stress is intense or persistent, speak with a qualified professional.',
           practice: 'Write a three-minute routine with a cue, a practice, and a reflection question. Also write your easier version for busy or difficult days.',
