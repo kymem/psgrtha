@@ -34,6 +34,7 @@ export interface PersonalGrowthBlueprint {
   prerequisites: string;
   target_audience: string;
   thumbnail_url: string;
+  intro_video_url?: string;
   curriculum: CourseCurriculum;
 }
 
@@ -388,6 +389,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     prerequisites: 'No prior experience required. Bring the phone or computer you use most for work or study.',
     target_audience: 'Students, professionals, and anyone who feels scattered by constant notifications and wants a practical plan for deeper focus.',
     thumbnail_url: 'https://images.pexels.com/photos/33997/pexels-photo.jpg',
+    intro_video_url: placeholderLessonVideoUrl,
     curriculum: {
       version: 1,
       resources: [motivationReference, learningHowToLearnCourse, lifeSkillsReference],

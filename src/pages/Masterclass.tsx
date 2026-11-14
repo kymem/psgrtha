@@ -132,6 +132,7 @@ export default function Masterclass() {
   const [uploadThumbnailPreview, setUploadThumbnailPreview] = useState<string | null>(null);
   const uploadThumbnailInputRef = useRef<HTMLInputElement>(null);
   const [uploadVideoPlaybackId, setUploadVideoPlaybackId] = useState<string | null>(null);
+  const [uploadIntroVideoUrl, setUploadIntroVideoUrl] = useState<string | undefined>(undefined);
   const [uploadVideoId, setUploadVideoId] = useState<string | null>(null);
   const [uploadVideoDuration, setUploadVideoDuration] = useState<string | null>(null);
   const [uploadPrice, setUploadPrice] = useState<number>(0);
@@ -602,6 +603,7 @@ export default function Masterclass() {
     setUploadLessons(String(blueprint.curriculum.lessons.length));
     setUploadThumbnailMode('url');
     setUploadThumbnailUrl(blueprint.thumbnail_url);
+    setUploadIntroVideoUrl(blueprint.intro_video_url);
     setUploadVideoPlaybackId(null);
     setUploadVideoId(null);
     setUploadVideoDuration(null);
@@ -726,6 +728,7 @@ export default function Masterclass() {
       setUploadVideoPlaybackId(null);
       setUploadVideoId(null);
       setUploadVideoDuration(null);
+      setUploadIntroVideoUrl(undefined);
       setUploadPreview(null);
       setUploadThumbnail(null);
       setUploadThumbnailPreview(null);
@@ -1594,6 +1597,7 @@ export default function Masterclass() {
                   setUploadResourceFiles([]);
                   setUploadVideoPlaybackId(null);
                   setUploadVideoId(null);
+                  setUploadIntroVideoUrl(undefined);
                   setLessonVideos({});
                   setUploadCategory(defaultCourseCategory);
                   setUploadLearningFormat('Self-paced course');
@@ -2075,7 +2079,11 @@ export default function Masterclass() {
                 <p className="text-xs text-gray-400 mb-3">Optional. Your complete structured lesson plan is included; add video now or later.</p>
 
                 <MasterclassVideoSource
+                  key={`intro-${curriculumVersion}`}
                   userId={user!.id}
+                  initialUrl={uploadIntroVideoUrl}
+                  processingSlot="intro"
+                  onProcessingChange={setVideoProcessing}
                   onReady={(video) => {
                     setUploadVideoPlaybackId(video.playbackId);
                     setUploadVideoId(video.videoUploadId);
