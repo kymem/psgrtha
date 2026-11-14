@@ -3,6 +3,9 @@ export interface CourseLesson {
   duration: string;
   description: string;
   practice: string;
+  content_url?: string;
+  thumbnail_url?: string;
+  video_upload_id?: string;
 }
 
 export interface CourseResource {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowRight, BookOpen, CalendarDays, CheckCircle, Clock3, MapPin, Users } from 'lucide-react';
+import { ArrowRight, Award, BookOpen, Briefcase, CalendarCheck, CalendarDays, CheckCircle, Clock3, MapPin, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -203,6 +203,22 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
               : 'Explore structured mentorship series and apply to the program that fits your goals.'}
           </p>
         </div>
+        {kind === 'mentorship' && (
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
+            {[
+              { title: 'Expert Guidance', description: 'Learn from professionals with years of industry experience.', Icon: Award },
+              { title: 'Personalized Approach', description: 'Get tailored advice based on your specific goals and challenges.', Icon: Users },
+              { title: 'Career Development', description: 'Receive strategic guidance to advance your career.', Icon: Briefcase },
+              { title: 'Accountability', description: 'Stay on track with regular check-ins and support.', Icon: CalendarCheck },
+            ].map(({ title: benefitTitle, description, Icon }) => (
+              <article key={benefitTitle} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                <Icon className="mb-2 h-6 w-6 text-rose-400" />
+                <h3 className="font-semibold text-white">{benefitTitle}</h3>
+                <p className="mt-1 text-sm leading-5 text-gray-300">{description}</p>
+              </article>
+            ))}
+          </div>
+        )}
         {error && <p role="alert" className="mb-4 rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
         {notice && <p role="status" className="mb-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{notice}</p>}
         {loading ? (
@@ -226,6 +242,15 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                     </div>
                     <h3 className="text-xl font-semibold text-white">{program.title}</h3>
                     <p className="mt-2 text-sm leading-6 text-gray-300">{program.description}</p>
+                    {kind === 'mentorship' && program.features.length > 0 && (
+                      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {program.features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2 text-sm text-gray-300">
+                            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-purple-300" />{feature}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-400">
                       <span className="flex items-center gap-1.5"><Clock3 className="h-4 w-4" />{program.duration || 'Duration to be confirmed'}</span>
                       <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" />{program.curriculum?.lessons?.length || 0} sessions</span>

@@ -6,11 +6,13 @@ import { extractDuration } from '../lib/getDuration';
 interface VideoUploadWithMuxForMasterclassProps {
   userId: string;
   onVideoSelected: (playbackId: string, videoUploadId: string, duration?: string) => void;
+  onVideoCleared?: () => void;
 }
 
 export default function VideoUploadWithMuxForMasterclass({
   userId,
-  onVideoSelected
+  onVideoSelected,
+  onVideoCleared
 }: VideoUploadWithMuxForMasterclassProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -161,6 +163,7 @@ export default function VideoUploadWithMuxForMasterclass({
   }
 
   function reset() {
+    onVideoCleared?.();
     setVideoFile(null);
     setPlaybackId(null);
     setVideoUploadId(null);

@@ -51,6 +51,17 @@ import {
   type PersonalGrowthBlueprint,
 } from '../lib/personalGrowthCourses';
 
+const getMuxStreamUrl = (input: string) => {
+  try {
+    const url = new URL(input.trim());
+    if (url.protocol !== 'https:' || url.hostname !== 'stream.mux.com') return null;
+    const playbackId = url.pathname.match(/^\/([A-Za-z0-9]+)(?:\.m3u8)?$/)?.[1];
+    return playbackId ? `https://stream.mux.com/${playbackId}.m3u8${url.search}` : null;
+  } catch {
+    return null;
+  }
+};
+
 type ViewMode = 'courses' | 'workshops' | 'learning' | 'teaching' | 'mentorship';
 type LayoutMode = 'grid' | 'list';
 
@@ -139,6 +150,7 @@ export default function Masterclass() {
   const [uploadThumbnailDragActive, setUploadThumbnailDragActive] = useState(false);
   const [uploadVideoMode, setUploadVideoMode] = useState<'upload' | 'url'>('upload');
   const [uploadVideoUrl, setUploadVideoUrl] = useState('');
+  const [lessonVideoUrls, setLessonVideoUrls] = useState<Record<number, string>>({});
   const [uploadCurrency, setUploadCurrency] = useState('UGX');
   const [userCourses, setUserCourses] = useState<ContentItem[]>([]);
   const [loadingUserCourses, setLoadingUserCourses] = useState(true);
@@ -584,6 +596,7 @@ export default function Masterclass() {
     setUploadCategory('personal-growth');
     setUploadLearningFormat(blueprint.learning_format);
     setUploadCurriculum(blueprint.curriculum);
+    setLessonVideoUrls({});
     setUploadPrerequisites(blueprint.prerequisites);
     setUploadTargetAudience(blueprint.target_audience);
     setUploadCourseDuration(blueprint.duration);
@@ -626,13 +639,12 @@ export default function Masterclass() {
     if (uploadVideoMode === 'upload' && uploadVideoPlaybackId && uploadVideoId) {
       finalVideoUrl = `https://stream.mux.com/${uploadVideoPlaybackId}.m3u8`;
     } else if (uploadVideoMode === 'url' && uploadVideoUrl.trim()) {
-      try {
-        new URL(uploadVideoUrl);
-        finalVideoUrl = uploadVideoUrl;
-      } catch {
-        setUploadError('Please enter a valid video URL');
+      const muxStreamUrl = getMuxStreamUrl(uploadVideoUrl);
+      if (!muxStreamUrl) {
+        setUploadError('Enter a Mux playback URL from stream.mux.com.');
         return;
       }
+      finalVideoUrl = muxStreamUrl;
     }
 
     // Validate thumbnail (either uploaded or URL)
