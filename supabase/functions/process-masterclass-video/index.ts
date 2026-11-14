@@ -1,7 +1,12 @@
+import { S3Client, GetObjectCommand } from "npm:@aws-sdk/client-s3";
+import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner";
 import { createClient } from 'npm:@supabase/supabase-js';
 
-const B2_BUCKET_NAME = Deno.env.get("B2_BUCKET_NAME");
+const B2_KEY_ID = Deno.env.get("B2_KEY_ID");
 const B2_PUBLIC_URL = Deno.env.get("B2_PUBLIC_URL");
+const B2_APPLICATION_KEY = Deno.env.get("B2_APPLICATION_KEY");
+const B2_S3_ENDPOINT = Deno.env.get("B2_S3_ENDPOINT");
+const B2_BUCKET_NAME = Deno.env.get("B2_BUCKET_NAME");
 const MUX_TOKEN_ID = Deno.env.get("MUX_TOKEN_ID");
 const MUX_TOKEN_SECRET = Deno.env.get("MUX_TOKEN_SECRET");
 
@@ -15,6 +20,15 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
+
+const s3 = new S3Client({
+  region: "eu-central-003",
+  endpoint: B2_S3_ENDPOINT,
+  credentials: {
+    accessKeyId: B2_KEY_ID!,
+    secretAccessKey: B2_APPLICATION_KEY!
+  }
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -39,6 +53,7 @@ Deno.serve(async (req) => {
     }
 
     let sourceUrl: string;
+    let muxInputUrl: string;
     let sourceName: string;
 
     if (videoUrl) {
@@ -58,16 +73,20 @@ Deno.serve(async (req) => {
         });
       }
       sourceUrl = parsed.toString();
+      muxInputUrl = sourceUrl;
       sourceName = parsed.pathname.split('/').pop() || 'video-url';
     } else {
-      // Construct public B2 URL directly (no signed URL needed for public bucket)
       if (B2_PUBLIC_URL && B2_PUBLIC_URL.trim()) {
         const publicBase = B2_PUBLIC_URL.replace(/\/$/, '');
         sourceUrl = `${publicBase}/${B2_BUCKET_NAME}/${filename}`;
       } else {
-        // Fallback: construct S3 path-hosted style URL
         sourceUrl = `https://s3.eu-central-003.backblazeb2.com/${B2_BUCKET_NAME}/${filename}`;
       }
+      muxInputUrl = await getSignedUrl(
+        s3,
+        new GetObjectCommand({ Bucket: B2_BUCKET_NAME!, Key: filename }),
+        { expiresIn: 900 }
+      );
       sourceName = filename;
     }
 
@@ -91,7 +110,7 @@ Deno.serve(async (req) => {
         Authorization: "Basic " + btoa(`${MUX_TOKEN_ID}:${MUX_TOKEN_SECRET}`)
       },
       body: JSON.stringify({
-        input: { url: sourceUrl },
+        input: { url: muxInputUrl },
         playback_policy: ["public"]
       })
     });
