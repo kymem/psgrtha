@@ -143,6 +143,7 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
       setError(registrationError.message);
     } else {
       setRegistrations((previous) => new Set(previous).add(program.id));
+      setRegistrationCounts((previous) => ({ ...previous, [program.id]: (previous[program.id] || 0) + 1 }));
       setNotice(`You are registered for ${program.title}.`);
     }
     setBusyId(null);
@@ -175,10 +176,10 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
 
   const reviewApplication = async (applicationId: string, status: 'approved' | 'declined') => {
     setBusyId(applicationId);
-    const { error: reviewError } = await supabase
-      .from('personal_growth_mentorship_applications')
-      .update({ status })
-      .eq('id', applicationId);
+    const { error: reviewError } = await supabase.rpc('review_personal_growth_mentorship_application', {
+      p_application_id: applicationId,
+      p_status: status,
+    });
     if (reviewError) {
       setError(reviewError.message);
     } else {
@@ -262,7 +263,14 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                     ) : myApplication ? (
                       <p className="mt-5 flex items-center gap-2 rounded-lg bg-emerald-400/10 p-3 text-sm text-emerald-200"><CheckCircle className="h-4 w-4" />Application {myApplication.status}</p>
                     ) : program.status === 'published' ? (
-                      <button type="button" onClick={() => { setApplicationProgram(program); setApplicationError(null); }} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white">
+                      <button type="button" onClick={() => {
+                        if (!user) {
+                          navigate('/signin');
+                          return;
+                        }
+                        setApplicationProgram(program);
+                        setApplicationError(null);
+                      }} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white">
                         Apply to this program <ArrowRight className="h-4 w-4" />
                       </button>
                     ) : null}

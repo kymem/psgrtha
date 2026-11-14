@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS public.personal_growth_workshop_registrations (
   status text NOT NULL DEFAULT 'registered' CHECK (status IN ('registered', 'cancelled', 'attended')),
   payment_status text NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'completed', 'failed')),
   price_paid numeric NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'UGX',
   payment_method text,
   transaction_id text,
   legacy_enrollment_id uuid UNIQUE REFERENCES public.student_enrollments(id) ON DELETE SET NULL,
@@ -170,25 +171,11 @@ CREATE POLICY "Users can apply to published mentorship programs"
   );
 
 DROP POLICY IF EXISTS "Mentorship program creators can review applications" ON public.personal_growth_mentorship_applications;
-CREATE POLICY "Mentorship program creators can review applications"
-  ON public.personal_growth_mentorship_applications FOR UPDATE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.personal_growth_mentorship_programs p
-      WHERE p.id = program_id AND p.created_by = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.personal_growth_mentorship_programs p
-      WHERE p.id = program_id AND p.created_by = auth.uid()
-    )
-  );
 
 GRANT SELECT ON public.personal_growth_workshops, public.personal_growth_mentorship_programs TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.personal_growth_workshops, public.personal_growth_mentorship_programs TO authenticated;
 GRANT SELECT ON public.personal_growth_workshop_registrations, public.personal_growth_mentorship_applications TO authenticated;
-GRANT INSERT, UPDATE ON public.personal_growth_mentorship_applications TO authenticated;
+GRANT INSERT ON public.personal_growth_mentorship_applications TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.register_for_personal_growth_workshop(p_workshop_id uuid)
 RETURNS uuid
@@ -240,6 +227,39 @@ $$;
 REVOKE ALL ON FUNCTION public.register_for_personal_growth_workshop(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.register_for_personal_growth_workshop(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.review_personal_growth_mentorship_application(p_application_id uuid, p_status text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+  IF p_status NOT IN ('approved', 'declined') THEN
+    RAISE EXCEPTION 'Invalid application decision';
+  END IF;
+
+  UPDATE public.personal_growth_mentorship_applications a
+  SET status = p_status, updated_at = now()
+  FROM public.personal_growth_mentorship_programs p
+  WHERE a.id = p_application_id
+    AND p.id = a.program_id
+    AND p.created_by = v_user_id
+    AND a.status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Application not found or already reviewed';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.review_personal_growth_mentorship_application(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.review_personal_growth_mentorship_application(uuid, text) TO authenticated;
+
 INSERT INTO public.personal_growth_workshops (
   id, created_by, blueprint_id, title, creator, track, description, category,
   thumbnail_url, duration, level, learning_outcomes, features, prerequisites,
@@ -270,11 +290,12 @@ SELECT DISTINCT ON (mcc.user_id, mcc.title)
   mcc.prerequisites,
   mcc.target_audience,
   COALESCE(mcc.curriculum, '{"version":1,"lessons":[],"resources":[]}'::jsonb),
-  COALESCE(mcc.course_price, 0),
-  COALESCE(mcc.course_currency, 'UGX'),
+  COALESCE(NULLIF(to_jsonb(mcc)->>'course_price', '')::numeric, 0),
+  COALESCE(to_jsonb(mcc)->>'course_currency', 'UGX'),
   CASE WHEN mcc.status = 'published' THEN 'published' ELSE 'draft' END
 FROM public.masterclass_page_content mcc
 WHERE mcc.category = 'personal-growth'
+  AND mcc.status IN ('published', 'draft')
   AND mcc.learning_format IN ('Applied workshop', 'Guided class')
   AND mcc.title IN (
     'Emotional Resilience: Respond with Clarity',
@@ -282,7 +303,7 @@ WHERE mcc.category = 'personal-growth'
     'Clear Thinking: Decisions, Creativity & Problem-Solving'
   )
 ORDER BY mcc.user_id, mcc.title, (mcc.status = 'published') DESC, mcc.created_at DESC
-ON CONFLICT (created_by, blueprint_id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.personal_growth_mentorship_programs (
   id, created_by, blueprint_id, title, creator, track, description, category,
@@ -306,18 +327,19 @@ SELECT DISTINCT ON (mcc.user_id)
   mcc.prerequisites,
   mcc.target_audience,
   COALESCE(mcc.curriculum, '{"version":1,"lessons":[],"resources":[]}'::jsonb),
-  COALESCE(mcc.course_price, 0),
-  COALESCE(mcc.course_currency, 'UGX'),
+  COALESCE(NULLIF(to_jsonb(mcc)->>'course_price', '')::numeric, 0),
+  COALESCE(to_jsonb(mcc)->>'course_currency', 'UGX'),
   CASE WHEN mcc.status = 'published' THEN 'published' ELSE 'draft' END
 FROM public.masterclass_page_content mcc
 WHERE mcc.category = 'personal-growth'
+  AND mcc.status IN ('published', 'draft')
   AND mcc.learning_format = 'Mentorship series'
   AND mcc.title = 'Communication & Meaningful Connection'
 ORDER BY mcc.user_id, (mcc.status = 'published') DESC, mcc.created_at DESC
-ON CONFLICT (created_by, blueprint_id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.personal_growth_workshop_registrations (
-  workshop_id, user_id, status, payment_status, price_paid,
+  workshop_id, user_id, status, payment_status, price_paid, currency,
   payment_method, transaction_id, legacy_enrollment_id
 )
 SELECT
@@ -326,6 +348,7 @@ SELECT
   CASE e.status WHEN 'completed' THEN 'attended' WHEN 'dropped' THEN 'cancelled' ELSE 'registered' END,
   e.payment_status,
   e.price_paid,
+  COALESCE(to_jsonb(e)->>'currency', 'UGX'),
   e.payment_method,
   e.transaction_id,
   e.id
@@ -339,12 +362,15 @@ JOIN public.personal_growth_workshops w
     WHEN 'Clear Thinking: Decisions, Creativity & Problem-Solving' THEN 'clear-thinking-and-decisions'
   END
 WHERE mcc.category = 'personal-growth'
+  AND mcc.status IN ('published', 'draft')
   AND mcc.learning_format IN ('Applied workshop', 'Guided class')
   AND mcc.title IN (
     'Emotional Resilience: Respond with Clarity',
     'The Habits & Goals Lab',
     'Clear Thinking: Decisions, Creativity & Problem-Solving'
   )
+  AND e.payment_status = 'completed'
+  AND e.status IN ('active', 'completed')
 ON CONFLICT DO NOTHING;
 
 UPDATE public.masterclass_page_content

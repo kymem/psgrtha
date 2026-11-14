@@ -16,6 +16,8 @@ interface PersonalGrowthProgramEditorModalProps {
 
 export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onClose, onSaved }: PersonalGrowthProgramEditorModalProps) {
   const { user, profile } = useAuth();
+  const [title, setTitle] = useState(blueprint.title);
+  const [description, setDescription] = useState(blueprint.description);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(blueprint.thumbnail_url);
   const [startsAt, setStartsAt] = useState('');
@@ -24,7 +26,6 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
   const [locationType, setLocationType] = useState<'online' | 'in-person' | 'hybrid'>('online');
   const [locationDetails, setLocationDetails] = useState('');
   const [capacity, setCapacity] = useState('');
-  const [status, setStatus] = useState<'draft' | 'published'>('published');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,10 +54,10 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
       const commonProgram = {
         created_by: user.id,
         blueprint_id: blueprint.id,
-        title: blueprint.title,
+        title: title.trim(),
         creator: profile.name,
         track: blueprint.track,
-        description: blueprint.description,
+        description: description.trim(),
         category: 'personal-growth',
         thumbnail_url: finalThumbnailUrl,
         duration: blueprint.duration,
@@ -68,7 +69,8 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
         curriculum: blueprint.curriculum,
         price: 0,
         currency: 'UGX',
-        status,
+        status: 'published',
+        updated_at: new Date().toISOString(),
       };
       const table = kind === 'workshop' ? 'personal_growth_workshops' : 'personal_growth_mentorship_programs';
       const program = kind === 'workshop'
@@ -108,8 +110,8 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
 
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-purple-200">{blueprint.track} · {blueprint.learning_format}</p>
-          <h3 className="mt-2 text-lg font-semibold text-white">{blueprint.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-gray-300">{blueprint.description}</p>
+          <label className="mt-3 block space-y-2 text-sm text-gray-300">Program title<input required value={title} onChange={(event) => setTitle(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
+          <label className="mt-3 block space-y-2 text-sm text-gray-300">Program description<textarea required rows={4} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
           <p className="mt-3 text-sm text-gray-400">{blueprint.duration} · {blueprint.curriculum.lessons.length} sessions</p>
           <details className="mt-4 border-t border-white/10 pt-3">
             <summary className="cursor-pointer text-sm font-medium text-rose-200">Review session plan</summary>
@@ -137,7 +139,7 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
             <label className="space-y-2 text-sm text-gray-300">Timezone<input value={timezone} onChange={(event) => setTimezone(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
             <label className="space-y-2 text-sm text-gray-300">Delivery mode<select value={locationType} onChange={(event) => setLocationType(event.target.value as typeof locationType)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white"><option value="online">Online</option><option value="in-person">In person</option><option value="hybrid">Hybrid</option></select></label>
             <label className="space-y-2 text-sm text-gray-300">Location or joining details (optional)<input value={locationDetails} onChange={(event) => setLocationDetails(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
-            <label className="space-y-2 text-sm text-gray-300">Registration capacity (optional)<input type="number" min="1" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
+            <label className="space-y-2 text-sm text-gray-300">Registration capacity (optional)<input type="number" min="1" step="1" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
             <p className="text-xs leading-5 text-gray-400 md:col-span-2">Registration is free in this version; paid workshop checkout is not enabled.</p>
           </div>
         )}
@@ -145,7 +147,6 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2 text-sm text-gray-300">Thumbnail URL<input type="url" value={thumbnailUrl} onChange={(event) => setThumbnailUrl(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
           <label className="space-y-2 text-sm text-gray-300">Or upload a thumbnail<input type="file" accept="image/*" onChange={(event) => setThumbnailFile(event.target.files?.[0] || null)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white file:mr-3 file:rounded file:border-0 file:bg-purple-500 file:px-3 file:py-2 file:text-white" /></label>
-          <label className="space-y-2 text-sm text-gray-300 md:col-span-2">Publishing status<select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white"><option value="published">Publish now</option><option value="draft">Save as draft</option></select></label>
         </div>
 
         {error && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
