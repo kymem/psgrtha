@@ -299,17 +299,19 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                           <p>The meeting link has not been added yet. The organiser will add it here before the session starts.</p>
                         )}
                         {talks.length > 0 && (
-                          <div className="space-y-3">
-                            <p className="font-semibold">Watch the talks</p>
-                            {talks.map((talk) => (
-                              <div key={talk.embedUrl} className="space-y-2">
-                                <p className="text-xs text-emerald-100/80">{talk.title}</p>
-                                <div className="aspect-video overflow-hidden rounded-lg bg-black">
-                                  <iframe src={talk.embedUrl} title={talk.title} loading="lazy" className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <details className="rounded-lg bg-white/[0.06] p-3">
+                            <summary className="cursor-pointer font-semibold">Watch the talks ({talks.length})</summary>
+                            <div className="mt-3 space-y-2">
+                              {talks.map((talk) => (
+                                <details key={talk.embedUrl} className="rounded-lg bg-black/30 p-3">
+                                  <summary className="cursor-pointer text-xs font-medium text-emerald-100">{talk.title}</summary>
+                                  <div className="mt-3 aspect-video overflow-hidden rounded-lg bg-black">
+                                    <iframe src={talk.embedUrl} title={talk.title} loading="lazy" className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                                  </div>
+                                </details>
+                              ))}
+                            </div>
+                          </details>
                         )}
                         <p className="text-xs text-emerald-100/70">Open View session plan above to see what each session covers.</p>
                       </div>
