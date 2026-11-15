@@ -127,6 +127,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/personal-growth/classes/:programId/items/:itemIndex"
+          element={
+            <ProtectedRoute>
+              <PersonalGrowthClass />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/enrollment-callback" element={<EnrollmentCallback />} />
         <Route path="/membership-callback" element={<MembershipCallback />} />
         {/* Help Center route */}
