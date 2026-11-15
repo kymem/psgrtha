@@ -230,6 +230,7 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
             {filteredPrograms.map((program) => {
               const myApplication = applications.find((application) => application.program_id === program.id && application.user_id === user?.id);
               const programApplications = applications.filter((application) => application.program_id === program.id && program.created_by === user?.id);
+              const joinLink = program.location_details && /^https?:\/\//i.test(program.location_details.trim()) ? program.location_details.trim() : null;
               return (
                 <article key={program.id} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
                   <div className="aspect-video bg-slate-800">
@@ -278,9 +279,25 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                         </ol>
                       </details>
                     )}
-                    {kind === 'workshops' ? (
-                      <button type="button" disabled={Boolean(busyId) || registrations.has(program.id) || program.status !== 'published'} onClick={() => registerForWorkshop(program)} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-                        {registrations.has(program.id) ? 'Registered' : busyId === program.id ? 'Registering...' : 'Register for workshop · Free'}
+                    {kind === 'workshops' && registrations.has(program.id) ? (
+                      <div className="mt-5 space-y-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-100">
+                        <p className="flex items-center gap-2 font-semibold"><CheckCircle className="h-4 w-4" />You are registered</p>
+                        <p>{program.starts_at ? `Starts ${new Date(program.starts_at).toLocaleString()} ${program.timezone || ''}`.trim() : 'The start date has not been set yet.'}</p>
+                        {joinLink ? (
+                          <a href={joinLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg bg-white/10 px-3 py-2 font-medium text-white hover:bg-white/15">
+                            {program.location_type === 'in-person' ? 'Open venue details' : 'Join online'}
+                            <ArrowRight className="h-4 w-4" />
+                          </a>
+                        ) : program.location_details ? (
+                          <p>Details: {program.location_details}</p>
+                        ) : (
+                          <p>Joining details have not been added yet. Check this card again before the session starts.</p>
+                        )}
+                        <p className="text-xs text-emerald-100/70">Open View session plan above to see what each session covers.</p>
+                      </div>
+                    ) : kind === 'workshops' ? (
+                      <button type="button" disabled={Boolean(busyId) || program.status !== 'published'} onClick={() => registerForWorkshop(program)} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+                        {busyId === program.id ? 'Registering...' : 'Register for workshop · Free'}
                         <ArrowRight className="h-4 w-4" />
                       </button>
                     ) : program.created_by === user?.id ? (
