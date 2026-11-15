@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, Check, Loader, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Check, ExternalLink, Loader, X } from 'lucide-react';
 import VideoUploadWithMuxForMasterclass from './VideoUploadWithMuxForMasterclass';
 import { ingestVideoUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 
@@ -25,7 +25,6 @@ export default function MasterclassVideoSource({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUrlReady, setIsUrlReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const autoStarted = useRef(false);
 
   useEffect(() => {
     if (!processingSlot || !onProcessingChange) return;
@@ -66,12 +65,6 @@ export default function MasterclassVideoSource({
       setIsProcessing(false);
     }
   }, [onReady]);
-
-  useEffect(() => {
-    if (!initialUrl || autoStarted.current) return;
-    autoStarted.current = true;
-    void processUrl(initialUrl);
-  }, [initialUrl, processUrl]);
 
   function clearUrl() {
     setUrl('');
@@ -122,7 +115,7 @@ export default function MasterclassVideoSource({
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-gray-400">
-            Paste a direct https link to a video file (for example, one stored in B2). It will be sent to Mux for playback.
+            Paste a direct https link to a video file (for example, one stored in B2). It will be sent to Mux for playback only after you click Process.
           </p>
           <div className="flex gap-2">
             <input
@@ -143,6 +136,17 @@ export default function MasterclassVideoSource({
               {isProcessing ? 'Processing' : 'Process'}
             </button>
           </div>
+          {url.trim().startsWith('https://') && (
+            <a
+              href={url.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-blue-400 hover:underline break-all"
+            >
+              <ExternalLink className="w-3 h-3 shrink-0" />
+              {url.trim()}
+            </a>
+          )}
         </div>
       )}
 
