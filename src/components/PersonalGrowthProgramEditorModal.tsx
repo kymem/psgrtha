@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react';
-import { ExternalLink, X } from 'lucide-react';
+import { useCallback, useState, type FormEvent } from 'react';
+import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { uploadToB2 } from '../lib/b2Upload';
 import { supabase } from '../lib/supabase';
 import type { PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
-import { toYouTubeContentUrl } from '../lib/masterclassVideo';
+import { toMuxStreamUrl, toYouTubeContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
+import MasterclassVideoSource from './MasterclassVideoSource';
 
 type ProgramKind = 'workshop' | 'mentorship';
 
@@ -15,23 +16,17 @@ interface PersonalGrowthProgramEditorModalProps {
   onSaved: () => void;
 }
 
-function VideoLinkField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const trimmed = value.trim();
-  const isYouTube = Boolean(trimmed && toYouTubeContentUrl(trimmed));
-  return (
-    <div className="mt-3 space-y-2">
-      <label className="block space-y-2 text-xs text-gray-300">Video link
-        <input type="url" value={value} placeholder="https://www.youtube.com/watch?v=..." onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-white" />
-      </label>
-      {trimmed.startsWith('https://') && (
-        <a href={trimmed} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 break-all text-xs text-sky-300 hover:underline"><ExternalLink className="h-3 w-3 shrink-0" />{trimmed}</a>
-      )}
-      {trimmed && (isYouTube
-        ? <p className="text-xs text-emerald-300">YouTube video ready</p>
-        : <p className="text-xs text-rose-300">Use a YouTube link that starts with https://</p>)}
-    </div>
-  );
-}
+type VideoSource = { content_url?: string; video_upload_id?: string };
+
+const toVideoSource = (item: { video_url?: string; content_url?: string; video_upload_id?: string }): VideoSource => ({
+  content_url: item.content_url ?? (item.video_url ? (toYouTubeContentUrl(item.video_url) ?? undefined) : undefined),
+  video_upload_id: item.video_upload_id,
+});
+
+const toVideoSourceFromReady = (video: ProcessedVideo): VideoSource =>
+  video.kind === 'mux'
+    ? { content_url: toMuxStreamUrl(video.playbackId), video_upload_id: video.videoUploadId }
+    : { content_url: video.contentUrl };
 
 export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onClose, onSaved }: PersonalGrowthProgramEditorModalProps) {
   const { user, profile } = useAuth();
@@ -45,10 +40,19 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
   const [locationType, setLocationType] = useState<'online' | 'in-person' | 'hybrid'>('online');
   const [locationDetails, setLocationDetails] = useState('');
   const [capacity, setCapacity] = useState('');
-  const [introVideoUrl, setIntroVideoUrl] = useState(blueprint.curriculum.introduction?.video_url ?? '');
-  const [lessonVideoUrls, setLessonVideoUrls] = useState(blueprint.curriculum.lessons.map((lesson) => lesson.video_url ?? ''));
+  const [introVideo, setIntroVideo] = useState<VideoSource>(() => toVideoSource(blueprint.curriculum.introduction ?? {}));
+  const [lessonVideos, setLessonVideos] = useState<VideoSource[]>(() => blueprint.curriculum.lessons.map(toVideoSource));
+  const [processingSlots, setProcessingSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleProcessingChange = useCallback((slot: string, isProcessing: boolean) => {
+    setProcessingSlots((slots) => (isProcessing ? [...slots.filter((item) => item !== slot), slot] : slots.filter((item) => item !== slot)));
+  }, []);
+
+  const updateLessonVideo = (index: number, video: VideoSource) => {
+    setLessonVideos((videos) => videos.map((item, position) => (position === index ? video : item)));
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,12 +69,6 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
       return;
     }
 
-    const videoUrls = [introVideoUrl, ...lessonVideoUrls].map((url) => url.trim());
-    if (videoUrls.some((url) => url && !toYouTubeContentUrl(url))) {
-      setError('Each video must be a YouTube link that starts with https://.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -84,8 +82,8 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
 
       const curriculum = {
         ...blueprint.curriculum,
-        introduction: blueprint.curriculum.introduction && { ...blueprint.curriculum.introduction, video_url: introVideoUrl.trim() },
-        lessons: blueprint.curriculum.lessons.map((lesson, index) => ({ ...lesson, video_url: lessonVideoUrls[index].trim() || undefined })),
+        introduction: blueprint.curriculum.introduction && { ...blueprint.curriculum.introduction, video_url: undefined, ...introVideo },
+        lessons: blueprint.curriculum.lessons.map((lesson, index) => ({ ...lesson, video_url: undefined, ...lessonVideos[index] })),
       };
       const commonProgram = {
         created_by: user.id,
@@ -154,20 +152,34 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
           <details open className="mt-4 border-t border-white/10 pt-3">
             <summary className="cursor-pointer text-sm font-medium text-rose-200">Review session plan</summary>
             {blueprint.curriculum.introduction && (
-              <div className="mt-3 rounded-lg bg-white/[0.04] p-3">
+              <div className="mt-3 space-y-3 rounded-lg bg-white/[0.04] p-3">
                 <p className="text-sm font-medium text-white">Introduction: {blueprint.curriculum.introduction.title}</p>
-                <p className="mt-1 text-sm leading-5 text-gray-300">{blueprint.curriculum.introduction.description}</p>
-                <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {blueprint.curriculum.introduction.practice}</p>
-                <VideoLinkField value={introVideoUrl} onChange={setIntroVideoUrl} />
+                <p className="text-sm leading-5 text-gray-300">{blueprint.curriculum.introduction.description}</p>
+                <p className="text-xs leading-5 text-purple-200">Practice: {blueprint.curriculum.introduction.practice}</p>
+                <MasterclassVideoSource
+                  userId={user?.id ?? ''}
+                  initialUrl={blueprint.curriculum.introduction.video_url}
+                  processingSlot="introduction"
+                  onProcessingChange={handleProcessingChange}
+                  onReady={(video) => setIntroVideo(toVideoSourceFromReady(video))}
+                  onCleared={() => setIntroVideo({})}
+                />
               </div>
             )}
             <ol className="mt-3 space-y-3">
               {blueprint.curriculum.lessons.map((lesson, index) => (
-                <li key={lesson.title} className="rounded-lg bg-white/[0.04] p-3">
+                <li key={lesson.title} className="space-y-3 rounded-lg bg-white/[0.04] p-3">
                   <p className="text-sm font-medium text-white">{index + 1}. {lesson.title} <span className="ml-2 text-xs font-normal text-gray-400">{lesson.duration}</span></p>
-                  <p className="mt-1 text-sm leading-5 text-gray-300">{lesson.description}</p>
-                  <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {lesson.practice}</p>
-                  <VideoLinkField value={lessonVideoUrls[index]} onChange={(value) => setLessonVideoUrls((urls) => urls.map((url, position) => (position === index ? value : url)))} />
+                  <p className="text-sm leading-5 text-gray-300">{lesson.description}</p>
+                  <p className="text-xs leading-5 text-purple-200">Practice: {lesson.practice}</p>
+                  <MasterclassVideoSource
+                    userId={user?.id ?? ''}
+                    initialUrl={lesson.video_url}
+                    processingSlot={`session-${index}`}
+                    onProcessingChange={handleProcessingChange}
+                    onReady={(video) => updateLessonVideo(index, toVideoSourceFromReady(video))}
+                    onCleared={() => updateLessonVideo(index, {})}
+                  />
                 </li>
               ))}
             </ol>
@@ -199,7 +211,9 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
         {error && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="rounded-xl border border-white/15 px-4 py-3 text-sm text-gray-200">Cancel</button>
-          <button type="submit" disabled={loading} className="rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{loading ? 'Saving program...' : `Save ${programName}`}</button>
+          <button type="submit" disabled={loading || processingSlots.length > 0} className="rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+            {processingSlots.length > 0 ? 'Processing videos...' : loading ? 'Saving program...' : `Save ${programName}`}
+          </button>
         </div>
       </form>
     </div>

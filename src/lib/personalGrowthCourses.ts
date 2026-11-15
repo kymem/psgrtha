@@ -21,7 +21,9 @@ export interface CourseCurriculum {
     title: string;
     description: string;
     practice: string;
-    video_url: string;
+    video_url?: string;
+    content_url?: string;
+    video_upload_id?: string;
   };
   lessons: CourseLesson[];
   resources: CourseResource[];

@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin } from 'lucide-reac
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { toYouTubeContentUrl } from '../lib/masterclassVideo';
+import { isYouTubeContentUrl, toYouTubeContentUrl } from '../lib/masterclassVideo';
+import MuxPlayer from '../components/MuxPlayer';
 import type { CourseCurriculum } from '../lib/personalGrowthCourses';
 
 type ClassProgram = {
@@ -26,8 +27,17 @@ type ClassItem = {
   practice?: string;
   duration?: string;
   embedUrl: string | null;
+  playbackId?: string | null;
   videoUrl?: string;
 };
+
+function toPlayback(source: { content_url?: string; video_url?: string }) {
+  const playbackId = source.content_url?.match(/stream\.mux\.com\/([a-zA-Z0-9]+)/)?.[1] ?? null;
+  const embedUrl = source.content_url && isYouTubeContentUrl(source.content_url)
+    ? source.content_url
+    : source.video_url ? toYouTubeContentUrl(source.video_url) : null;
+  return { embedUrl, playbackId };
+}
 
 export default function PersonalGrowthClass() {
   const { programId, itemIndex } = useParams<{ programId: string; itemIndex?: string }>();
@@ -96,14 +106,14 @@ export default function PersonalGrowthClass() {
     ? program.location_details.trim()
     : null;
   const introduction = program.curriculum?.introduction;
-  const introEmbedUrl = introduction?.video_url ? toYouTubeContentUrl(introduction.video_url) : null;
+  const introPlayback = introduction ? toPlayback(introduction) : null;
   const sessions: ClassItem[] = (program.curriculum?.lessons || []).map((lesson) => ({
     kind: 'session',
     title: lesson.title,
     description: lesson.description,
     practice: lesson.practice,
     duration: lesson.duration,
-    embedUrl: lesson.video_url ? toYouTubeContentUrl(lesson.video_url) : null,
+    ...toPlayback(lesson),
     videoUrl: lesson.video_url,
   }));
   const talkResources = (program.curriculum?.resources || []).filter((resource) => toYouTubeContentUrl(resource.url));
@@ -174,6 +184,10 @@ export default function PersonalGrowthClass() {
             <div className="aspect-video overflow-hidden rounded-xl bg-black">
               <iframe src={item.embedUrl} title={item.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
             </div>
+          ) : item.playbackId ? (
+            <div className="aspect-video overflow-hidden rounded-xl bg-black">
+              <MuxPlayer playbackId={item.playbackId} title={item.title} />
+            </div>
           ) : item.videoUrl ? (
             <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-rose-200 hover:text-white">Open video<ArrowRight className="h-4 w-4" /></a>
           ) : null}
@@ -243,9 +257,14 @@ export default function PersonalGrowthClass() {
           <h2 className="text-lg font-semibold">Introduction</h2>
           <div className="glass-effect space-y-5 rounded-2xl p-6">
             <h3 className="text-xl font-semibold">{introduction.title}</h3>
-            {introEmbedUrl && (
+            {introPlayback?.embedUrl && (
               <div className="aspect-video overflow-hidden rounded-xl bg-black">
-                <iframe src={introEmbedUrl} title={introduction.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                <iframe src={introPlayback.embedUrl} title={introduction.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+              </div>
+            )}
+            {introPlayback?.playbackId && (
+              <div className="aspect-video overflow-hidden rounded-xl bg-black">
+                <MuxPlayer playbackId={introPlayback.playbackId} title={introduction.title} />
               </div>
             )}
             <p className="text-sm leading-6 text-gray-300">{introduction.description}</p>
