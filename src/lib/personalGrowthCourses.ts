@@ -17,6 +17,12 @@ export interface CourseResource {
 
 export interface CourseCurriculum {
   version: 1;
+  introduction?: {
+    title: string;
+    description: string;
+    practice: string;
+    video_url: string;
+  };
   lessons: CourseLesson[];
   resources: CourseResource[];
 }
@@ -35,7 +41,6 @@ export interface PersonalGrowthBlueprint {
   target_audience: string;
   thumbnail_url: string;
   intro_video_url?: string;
-  introduction?: { title: string; description: string; practice: string; video_url: string };
   curriculum: CourseCurriculum;
 }
 
@@ -646,14 +651,14 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     target_audience: 'Learners who want to grow steadily and honestly, especially when progress feels hard to sustain.',
     thumbnail_url: 'https://i.ytimg.com/vi/iCvmsMzlF7o/hqdefault.jpg',
     intro_video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
-    introduction: {
-      title: 'Introduction: The power of vulnerability',
-      video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
-      description: 'Begin with Brené Brown on why honesty and vulnerability are part of growth. Notice where you feel resistance, and carry that question into the sessions that follow.',
-      practice: 'Write one area of your life you want to develop and one reason you feel reluctant to be honest about it.',
-    },
     curriculum: {
       version: 1,
+      introduction: {
+        title: 'Introduction: The power of vulnerability',
+        video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
+        description: 'Begin with Brené Brown on why honesty and vulnerability are part of growth. Notice where you feel resistance, and carry that question into the sessions that follow.',
+        practice: 'Write one area of your life you want to develop and one reason you feel reluctant to be honest about it.',
+      },
       resources: [
         motivationReference,
         goalPlanningReference,
