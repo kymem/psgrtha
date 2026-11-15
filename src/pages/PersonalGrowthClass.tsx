@@ -17,6 +17,7 @@ type ClassProgram = {
   location_type: string;
   location_details: string | null;
   curriculum: PersonalGrowthBlueprint['curriculum'];
+  introduction?: PersonalGrowthBlueprint['introduction'];
 };
 
 type ClassItem = {
@@ -60,7 +61,7 @@ export default function PersonalGrowthClass() {
 
       const saved = data as ClassProgram;
       const blueprint = PERSONAL_GROWTH_BLUEPRINTS.find((item) => item.id === saved.blueprint_id);
-      setProgram({ ...saved, curriculum: blueprint?.curriculum ?? saved.curriculum });
+      setProgram({ ...saved, curriculum: blueprint?.curriculum ?? saved.curriculum, introduction: blueprint?.introduction });
       setHasAccess(Boolean(registration) || saved.created_by === user.id);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Could not load this class.');
@@ -96,6 +97,7 @@ export default function PersonalGrowthClass() {
   const joinLink = program.location_details && /^https?:\/\//i.test(program.location_details.trim())
     ? program.location_details.trim()
     : null;
+  const introEmbedUrl = program.introduction?.video_url ? toYouTubeContentUrl(program.introduction.video_url) : null;
   const sessions: ClassItem[] = (program.curriculum?.lessons || []).map((lesson) => ({
     kind: 'session',
     title: lesson.title,
@@ -237,9 +239,28 @@ export default function PersonalGrowthClass() {
           )}
         </section>
 
-        {sessions.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Sessions</h2>
+        {program.introduction && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Introduction</h2>
+          <div className="glass-effect space-y-5 rounded-2xl p-6">
+            <h3 className="text-xl font-semibold">{program.introduction.title}</h3>
+            {introEmbedUrl && (
+              <div className="aspect-video overflow-hidden rounded-xl bg-black">
+                <iframe src={introEmbedUrl} title={program.introduction.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+              </div>
+            )}
+            <p className="text-sm leading-6 text-gray-300">{program.introduction.description}</p>
+            <div className="rounded-xl bg-white/5 p-5">
+              <p className="text-sm font-medium">Practice</p>
+              <p className="mt-2 text-sm leading-6 text-gray-300">{program.introduction.practice}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {sessions.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Sessions</h2>
             {sessions.map((item, index) => itemLink(item, index))}
           </section>
         )}
