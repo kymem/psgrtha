@@ -3,7 +3,6 @@ import { ArrowRight, Award, BookOpen, Briefcase, CalendarCheck, CalendarDays, Ch
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { toYouTubeContentUrl } from '../lib/masterclassVideo';
 import { PERSONAL_GROWTH_BLUEPRINTS, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
 
 type ProgramKind = 'workshops' | 'mentorship';
@@ -55,11 +54,6 @@ interface PersonalGrowthProgramsProps {
   onPrepare: (blueprint: PersonalGrowthBlueprint) => void;
 }
 
-const talksFor = (program: Program) => (program.curriculum?.resources || []).flatMap((resource) => {
-  const embedUrl = toYouTubeContentUrl(resource.url);
-  return embedUrl ? [{ title: resource.title, embedUrl }] : [];
-});
-
 export default function PersonalGrowthPrograms({ kind, category, searchQuery, refreshKey, onPrepare }: PersonalGrowthProgramsProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -76,8 +70,6 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
   const [applicationAvailability, setApplicationAvailability] = useState('');
   const [applicationMessage, setApplicationMessage] = useState('');
   const [applicationError, setApplicationError] = useState<string | null>(null);
-  const [talksProgramId, setTalksProgramId] = useState<string | null>(null);
-  const talksProgram = programs.find((program) => program.id === talksProgramId) ?? null;
 
   const fetchPrograms = useCallback(async () => {
     setLoading(true);
@@ -239,7 +231,6 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
               const myApplication = applications.find((application) => application.program_id === program.id && application.user_id === user?.id);
               const programApplications = applications.filter((application) => application.program_id === program.id && program.created_by === user?.id);
               const joinLink = program.location_details && /^https?:\/\//i.test(program.location_details.trim()) ? program.location_details.trim() : null;
-              const talks = talksFor(program);
               return (
                 <article key={program.id} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
                   <div className="aspect-video bg-slate-800">
@@ -302,12 +293,10 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                         ) : (
                           <p>The meeting link has not been added yet. The organiser will add it here before the session starts.</p>
                         )}
-                        {talks.length > 0 && (
-                          <button type="button" onClick={() => setTalksProgramId(program.id)} className="flex w-full items-center justify-between rounded-lg bg-white/10 px-3 py-2 font-medium text-white hover:bg-white/15">
-                            Open class videos ({talks.length})
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-                        )}
+                        <button type="button" onClick={() => navigate(`/personal-growth/classes/${program.id}`)} className="flex w-full items-center justify-between rounded-lg bg-white/10 px-3 py-2 font-medium text-white hover:bg-white/15">
+                          Open class
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
                       </div>
                     ) : kind === 'workshops' ? (
                       <button type="button" disabled={Boolean(busyId) || program.status !== 'published'} onClick={() => registerForWorkshop(program)} className="mt-5 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
@@ -375,28 +364,6 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
           ))}
         </div>
       </section>
-
-      {talksProgram && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="glass-effect max-h-[90vh] w-full max-w-3xl space-y-5 overflow-y-auto rounded-2xl p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white">{talksProgram.title}</h2>
-                <p className="mt-1 text-sm text-gray-400">Class videos</p>
-              </div>
-              <button type="button" onClick={() => setTalksProgramId(null)} className="text-gray-400 hover:text-white" aria-label="Close class videos">×</button>
-            </div>
-            {talksFor(talksProgram).map((talk) => (
-              <div key={talk.embedUrl} className="space-y-2">
-                <p className="text-sm font-medium text-white">{talk.title}</p>
-                <div className="aspect-video overflow-hidden rounded-lg bg-black">
-                  <iframe src={talk.embedUrl} title={talk.title} loading="lazy" className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {applicationProgram && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

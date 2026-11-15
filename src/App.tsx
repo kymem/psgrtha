@@ -13,6 +13,7 @@ import Media from './pages/Media';
 import Masterclass from './pages/Masterclass';
 import CourseDetailPage from './pages/CourseDetailPage';
 import CareerGuidancePage from './pages/CareerGuidancePage';
+import PersonalGrowthClass from './pages/PersonalGrowthClass';
 import EnrollmentCallback from './pages/EnrollmentCallback';
 import MembershipCallback from './pages/MembershipCallback';
 import Content from './pages/Content';
@@ -118,6 +119,14 @@ function App() {
         <Route path="/masterclass" element={<Masterclass />} />
         <Route path="/course/:courseId" element={<CourseDetailPage />} />
         <Route path="/career-guidance/:courseId" element={<CareerGuidancePage />} />
+        <Route
+          path="/personal-growth/classes/:programId"
+          element={
+            <ProtectedRoute>
+              <PersonalGrowthClass />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/enrollment-callback" element={<EnrollmentCallback />} />
         <Route path="/membership-callback" element={<MembershipCallback />} />
         {/* Help Center route */}
