@@ -39,6 +39,10 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
       setError('The end time must be after the start time.');
       return;
     }
+    if (kind === 'workshop' && locationType === 'online' && locationDetails.trim() && !/^https?:\/\//i.test(locationDetails.trim())) {
+      setError('The meeting link must start with https:// (for example, a Zoom or Google Meet link).');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -96,6 +100,8 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
 
   const isWorkshop = kind === 'workshop';
   const programName = isWorkshop ? 'workshop' : 'mentorship program';
+  const locationLabel = locationType === 'in-person' ? 'Venue address' : locationType === 'hybrid' ? 'Meeting link or venue address' : 'Meeting link (Zoom, Google Meet or similar)';
+  const locationPlaceholder = locationType === 'in-person' ? 'Street address' : 'https://meet.google.com/...';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -138,7 +144,7 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
             <label className="space-y-2 text-sm text-gray-300">Ends at (optional)<input type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
             <label className="space-y-2 text-sm text-gray-300">Timezone<input value={timezone} onChange={(event) => setTimezone(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
             <label className="space-y-2 text-sm text-gray-300">Delivery mode<select value={locationType} onChange={(event) => setLocationType(event.target.value as typeof locationType)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white"><option value="online">Online</option><option value="in-person">In person</option><option value="hybrid">Hybrid</option></select></label>
-            <label className="space-y-2 text-sm text-gray-300">Location or joining details (optional)<input value={locationDetails} onChange={(event) => setLocationDetails(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
+            <label className="space-y-2 text-sm text-gray-300 md:col-span-2">{locationLabel}<input value={locationDetails} placeholder={locationPlaceholder} onChange={(event) => setLocationDetails(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /><span className="block text-xs text-gray-500">Registered attendees see this on the card. You can add it now or update it before the session starts.</span></label>
             <label className="space-y-2 text-sm text-gray-300">Registration capacity (optional)<input type="number" min="1" step="1" value={capacity} onChange={(event) => setCapacity(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
             <p className="text-xs leading-5 text-gray-400 md:col-span-2">Registration is free in this version; paid workshop checkout is not enabled.</p>
           </div>

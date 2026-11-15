@@ -264,7 +264,7 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                     {kind === 'workshops' && (
                       <div className="mt-3 space-y-2 text-sm text-gray-400">
                         {program.starts_at && <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{new Date(program.starts_at).toLocaleString()} {program.timezone || ''}</p>}
-                        <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{program.location_type}{program.location_details ? ` · ${program.location_details}` : ''}</p>
+                        <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{program.location_type}{program.location_details && !joinLink ? ` · ${program.location_details}` : ''}</p>
                         {program.created_by === user?.id
                           ? <p className="flex items-center gap-2"><Users className="h-4 w-4" />{registrationCounts[program.id] || 0}{program.registration_capacity ? ` / ${program.registration_capacity}` : ''} registered</p>
                           : <p className="flex items-center gap-2"><Users className="h-4 w-4" />{program.registration_capacity ? `Up to ${program.registration_capacity} places` : 'Registration open'}</p>}
@@ -294,9 +294,9 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                             <ArrowRight className="h-4 w-4" />
                           </a>
                         ) : program.location_details ? (
-                          <p>Details: {program.location_details}</p>
+                          <p>{program.location_type === 'in-person' ? 'Venue' : 'Joining'}: {program.location_details}</p>
                         ) : (
-                          <p>Joining details have not been added yet. Check this card again before the session starts.</p>
+                          <p>The meeting link has not been added yet. The organiser will add it here before the session starts.</p>
                         )}
                         {talks.length > 0 && (
                           <div className="space-y-3">
