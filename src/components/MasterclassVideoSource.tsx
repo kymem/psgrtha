@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, ExternalLink, Loader, X } from 'lucide-react';
 import VideoUploadWithMuxForMasterclass from './VideoUploadWithMuxForMasterclass';
-import { ingestVideoUrl, type ProcessedVideo } from '../lib/masterclassVideo';
+import { ingestVideoUrl, toYouTubeContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 
 interface MasterclassVideoSourceProps {
   userId: string;
@@ -53,6 +53,14 @@ export default function MasterclassVideoSource({
       return;
     }
 
+    const youtubeContentUrl = toYouTubeContentUrl(parsed.toString());
+    if (youtubeContentUrl) {
+      setError(null);
+      setIsUrlReady(true);
+      onReady({ kind: 'youtube', contentUrl: youtubeContentUrl });
+      return;
+    }
+
     setError(null);
     setIsProcessing(true);
     try {
@@ -100,7 +108,7 @@ export default function MasterclassVideoSource({
         <VideoUploadWithMuxForMasterclass
           userId={userId}
           onVideoSelected={(playbackId, videoUploadId, duration) =>
-            onReady({ playbackId, videoUploadId, duration })
+            onReady({ kind: 'mux', playbackId, videoUploadId, duration })
           }
           onVideoCleared={onCleared}
         />
@@ -115,7 +123,7 @@ export default function MasterclassVideoSource({
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-gray-400">
-            Paste a direct https link to a video file (for example, one stored in B2). It will be sent to Mux for playback only after you click Process.
+            Paste a direct https link to a video file (for example, one stored in B2) to send it to Mux, or a YouTube link to embed it. Nothing is processed until you click Process.
           </p>
           <div className="flex gap-2">
             <input

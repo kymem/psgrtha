@@ -39,7 +39,7 @@ import { useEnrollment } from '../hooks/useEnrollment';
 import EditMasterclassContentModal from '../components/EditMasterclassContentModal';
 import ContentCountdownTimer from '../components/ContentCountdownTimer';
 import MasterclassVideoSource from '../components/MasterclassVideoSource';
-import { toMuxStreamUrl, type ProcessedVideo } from '../lib/masterclassVideo';
+import { toContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 import EnrollmentModal from '../components/EnrollmentModal';
 import PersonalGrowthShowcase from '../components/PersonalGrowthShowcase';
 import PersonalGrowthPrograms from '../components/PersonalGrowthPrograms';
@@ -131,7 +131,7 @@ export default function Masterclass() {
   const [uploadThumbnail, setUploadThumbnail] = useState<File | null>(null);
   const [uploadThumbnailPreview, setUploadThumbnailPreview] = useState<string | null>(null);
   const uploadThumbnailInputRef = useRef<HTMLInputElement>(null);
-  const [uploadVideoPlaybackId, setUploadVideoPlaybackId] = useState<string | null>(null);
+  const [uploadIntroContentUrl, setUploadIntroContentUrl] = useState<string | null>(null);
   const [uploadIntroVideoUrl, setUploadIntroVideoUrl] = useState<string | undefined>(undefined);
   const [uploadVideoId, setUploadVideoId] = useState<string | null>(null);
   const [uploadVideoDuration, setUploadVideoDuration] = useState<string | null>(null);
@@ -604,7 +604,7 @@ export default function Masterclass() {
     setUploadThumbnailMode('url');
     setUploadThumbnailUrl(blueprint.thumbnail_url);
     setUploadIntroVideoUrl(blueprint.intro_video_url);
-    setUploadVideoPlaybackId(null);
+    setUploadIntroContentUrl(null);
     setUploadVideoId(null);
     setUploadVideoDuration(null);
     setUploadResourceFiles([]);
@@ -636,8 +636,6 @@ export default function Masterclass() {
       setUploadError('Wait for the lesson videos to finish processing before saving');
       return;
     }
-
-    const introVideoUrl = uploadVideoPlaybackId ? toMuxStreamUrl(uploadVideoPlaybackId) : null;
 
     // Validate thumbnail (either uploaded or URL)
     let finalThumbnailUrl = '';
@@ -685,7 +683,7 @@ export default function Masterclass() {
         lessons: uploadCurriculum.lessons.map((lesson, index) => {
           const video = lessonVideos[index];
           return video
-            ? { ...lesson, content_url: toMuxStreamUrl(video.playbackId), video_upload_id: video.videoUploadId }
+            ? { ...lesson, content_url: toContentUrl(video), video_upload_id: video.kind === 'mux' ? video.videoUploadId : undefined }
             : lesson;
         }),
         resources: [...uploadCurriculum.resources, ...uploadedResources],
@@ -698,7 +696,7 @@ export default function Masterclass() {
           creator: profile.name,
           description: uploadDescription || null,
           thumbnail_url: finalThumbnailUrl,
-          content_url: introVideoUrl,
+          content_url: uploadIntroContentUrl,
           type: 'course-material',
           category: uploadCategory || null,
           duration: uploadVideoDuration || uploadCourseDuration || null,
@@ -725,7 +723,7 @@ export default function Masterclass() {
       setUploadSuccess(true);
       setUploadTitle('');
       setUploadDescription('');
-      setUploadVideoPlaybackId(null);
+      setUploadIntroContentUrl(null);
       setUploadVideoId(null);
       setUploadVideoDuration(null);
       setUploadIntroVideoUrl(undefined);
@@ -1595,7 +1593,7 @@ export default function Masterclass() {
                   setUploadThumbnail(null);
                   setUploadThumbnailPreview(null);
                   setUploadResourceFiles([]);
-                  setUploadVideoPlaybackId(null);
+                  setUploadIntroContentUrl(null);
                   setUploadVideoId(null);
                   setUploadIntroVideoUrl(undefined);
                   setLessonVideos({});
@@ -2085,12 +2083,12 @@ export default function Masterclass() {
                   processingSlot="intro"
                   onProcessingChange={setVideoProcessing}
                   onReady={(video) => {
-                    setUploadVideoPlaybackId(video.playbackId);
-                    setUploadVideoId(video.videoUploadId);
-                    setUploadVideoDuration(video.duration || null);
+                    setUploadIntroContentUrl(toContentUrl(video));
+                    setUploadVideoId(video.kind === 'mux' ? video.videoUploadId : null);
+                    setUploadVideoDuration(video.kind === 'mux' ? video.duration || null : null);
                   }}
                   onCleared={() => {
-                    setUploadVideoPlaybackId(null);
+                    setUploadIntroContentUrl(null);
                     setUploadVideoId(null);
                     setUploadVideoDuration(null);
                   }}
