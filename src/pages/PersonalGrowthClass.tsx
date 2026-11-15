@@ -97,16 +97,13 @@ export default function PersonalGrowthClass() {
     embedUrl: lesson.video_url ? toYouTubeContentUrl(lesson.video_url) : null,
     videoUrl: lesson.video_url,
   }));
-  const sessionVideoUrls = new Set(sessions.map((item) => item.embedUrl).filter(Boolean));
-  const talks: ClassItem[] = (program.curriculum?.resources || [])
-    .map((resource) => ({ resource, embedUrl: toYouTubeContentUrl(resource.url) }))
-    .filter(({ embedUrl }) => embedUrl && !sessionVideoUrls.has(embedUrl))
-    .map(({ resource, embedUrl }) => ({
-      kind: 'talk',
-      title: resource.title,
-      embedUrl,
-      videoUrl: resource.url,
-    }));
+  const talkResources = (program.curriculum?.resources || []).filter((resource) => toYouTubeContentUrl(resource.url));
+  const talks: ClassItem[] = talkResources.map((resource) => ({
+    kind: 'talk',
+    title: resource.title,
+    embedUrl: toYouTubeContentUrl(resource.url),
+    videoUrl: resource.url,
+  }));
   const furtherReading = (program.curriculum?.resources || []).filter((resource) => !toYouTubeContentUrl(resource.url));
   const items = [...sessions, ...talks];
 

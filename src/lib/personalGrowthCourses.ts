@@ -632,7 +632,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     track: 'Courage & persistence',
     learning_format: 'Guided class',
     description: 'A guided class on the courage and persistence that personal growth requires. Learners begin with an intro talk on vulnerability, examine common self-improvement pitfalls, explore passion and perseverance, and turn effort into repeatable habits. Videos are linked from YouTube and remain the property of their creators. The class is educational and is not a substitute for professional support.',
-    duration: '5 lessons · approximately 3 hours',
+    duration: '6 lessons · approximately 3 hours',
     level: 'Beginner',
     learning_outcomes: [
       'Describe how vulnerability and honesty support meaningful growth.',
@@ -640,7 +640,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
       'Distinguish productive persistence from rigid effort that ignores feedback.',
       'Turn a long-term interest into a routine with a minimum version and a review point.',
     ],
-    features: ['Intro talk on vulnerability', 'Five guided lessons', 'Three linked expert talks', 'Growth plan worksheet'],
+    features: ['Six guided lessons', 'Linked expert talks', 'Growth plan worksheet'],
     prerequisites: 'No prior experience required. Bring a notebook or digital journal and one area of your life you want to develop.',
     target_audience: 'Learners who want to grow steadily and honestly, especially when progress feels hard to sustain.',
     thumbnail_url: 'https://i.ytimg.com/vi/iCvmsMzlF7o/hqdefault.jpg',
@@ -655,23 +655,15 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
           url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
           type: 'reference',
         },
-        {
-          title: 'Video: "The Dark Side of Self Improvement" by Suzanne Eder, TEDxWilmington (YouTube)',
-          url: 'https://www.youtube.com/watch?v=wljRiAofFJ8',
-          type: 'reference',
-        },
-        {
-          title: 'Video: "Grit: The Power of Passion and Perseverance" by Angela Lee Duckworth, TED (YouTube)',
-          url: 'https://www.youtube.com/watch?v=H14bBuluwB8',
-          type: 'reference',
-        },
-        {
-          title: 'Video: "How to turn grit into a lifelong habit" by Angela Duckworth, The TED Interview (YouTube)',
-          url: 'https://www.youtube.com/watch?v=1TQ4gezRQh4',
-          type: 'reference',
-        },
       ],
       lessons: [
+        {
+          title: 'Introduction: The power of vulnerability',
+          video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
+          duration: '20 min',
+          description: 'Begin with Brené Brown on why honesty and vulnerability are part of growth. Notice where you feel resistance, and carry that question into the sessions that follow.',
+          practice: 'Write one area of your life you want to develop and one reason you feel reluctant to be honest about it.',
+        },
         {
           title: 'Self-improvement without the pressure',
           video_url: 'https://www.youtube.com/watch?v=wljRiAofFJ8',
