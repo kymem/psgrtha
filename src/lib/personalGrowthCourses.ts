@@ -650,11 +650,6 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
       resources: [
         motivationReference,
         goalPlanningReference,
-        {
-          title: 'Video: "The power of vulnerability" by Brené Brown, TED (YouTube)',
-          url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
-          type: 'reference',
-        },
       ],
       lessons: [
         {
