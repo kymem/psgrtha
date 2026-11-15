@@ -4,11 +4,12 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { toYouTubeContentUrl } from '../lib/masterclassVideo';
-import type { PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
+import { PERSONAL_GROWTH_BLUEPRINTS, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
 
 type ClassProgram = {
   id: string;
   created_by: string;
+  blueprint_id: string | null;
   title: string;
   description: string;
   starts_at: string | null;
@@ -43,7 +44,7 @@ export default function PersonalGrowthClass() {
     try {
       const { data, error: fetchError } = await supabase
         .from('personal_growth_workshops')
-        .select('id, created_by, title, description, starts_at, timezone, location_type, location_details, curriculum')
+        .select('id, created_by, blueprint_id, title, description, starts_at, timezone, location_type, location_details, curriculum')
         .eq('id', programId)
         .single();
       if (fetchError) throw fetchError;
@@ -58,7 +59,8 @@ export default function PersonalGrowthClass() {
       if (registrationError) throw registrationError;
 
       const saved = data as ClassProgram;
-      setProgram(saved);
+      const blueprint = PERSONAL_GROWTH_BLUEPRINTS.find((item) => item.id === saved.blueprint_id);
+      setProgram({ ...saved, curriculum: blueprint?.curriculum ?? saved.curriculum });
       setHasAccess(Boolean(registration) || saved.created_by === user.id);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Could not load this class.');
