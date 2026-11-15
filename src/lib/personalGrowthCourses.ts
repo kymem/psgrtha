@@ -630,7 +630,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     id: 'courage-and-persistence-for-growth',
     title: 'Courage to Grow: Honesty, Persistence & Lasting Habits',
     track: 'Courage & persistence',
-    learning_format: 'Guided class',
+    learning_format: 'Self-paced course',
     description: 'A guided class on the courage and persistence that personal growth requires. Learners begin with an intro talk on vulnerability, examine common self-improvement pitfalls, explore passion and perseverance, and turn effort into repeatable habits. Videos are linked from YouTube and remain the property of their creators. The class is educational and is not a substitute for professional support.',
     duration: '5 lessons · approximately 3 hours',
     level: 'Beginner',
