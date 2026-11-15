@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { toYouTubeContentUrl } from '../lib/masterclassVideo';
-import type { CourseCurriculum } from '../lib/personalGrowthCourses';
+import { PERSONAL_GROWTH_BLUEPRINTS, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
 
 type ClassProgram = {
   id: string;
@@ -16,7 +16,8 @@ type ClassProgram = {
   timezone: string | null;
   location_type: string;
   location_details: string | null;
-  curriculum: CourseCurriculum;
+  curriculum: PersonalGrowthBlueprint['curriculum'];
+  introduction?: PersonalGrowthBlueprint['introduction'];
 };
 
 type ClassItem = {
@@ -59,7 +60,8 @@ export default function PersonalGrowthClass() {
       if (registrationError) throw registrationError;
 
       const saved = data as ClassProgram;
-      setProgram(saved);
+      const blueprint = PERSONAL_GROWTH_BLUEPRINTS.find((item) => item.id === saved.blueprint_id);
+      setProgram({ ...saved, curriculum: blueprint?.curriculum ?? saved.curriculum, introduction: blueprint?.introduction });
       setHasAccess(Boolean(registration) || saved.created_by === user.id);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Could not load this class.');
@@ -95,8 +97,7 @@ export default function PersonalGrowthClass() {
   const joinLink = program.location_details && /^https?:\/\//i.test(program.location_details.trim())
     ? program.location_details.trim()
     : null;
-  const introduction = program.curriculum?.introduction;
-  const introEmbedUrl = introduction?.video_url ? toYouTubeContentUrl(introduction.video_url) : null;
+  const introEmbedUrl = program.introduction?.video_url ? toYouTubeContentUrl(program.introduction.video_url) : null;
   const sessions: ClassItem[] = (program.curriculum?.lessons || []).map((lesson) => ({
     kind: 'session',
     title: lesson.title,
@@ -238,20 +239,20 @@ export default function PersonalGrowthClass() {
           )}
         </section>
 
-        {introduction && (
+        {program.introduction && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Introduction</h2>
           <div className="glass-effect space-y-5 rounded-2xl p-6">
-            <h3 className="text-xl font-semibold">{introduction.title}</h3>
+            <h3 className="text-xl font-semibold">{program.introduction.title}</h3>
             {introEmbedUrl && (
               <div className="aspect-video overflow-hidden rounded-xl bg-black">
-                <iframe src={introEmbedUrl} title={introduction.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                <iframe src={introEmbedUrl} title={program.introduction.title} className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
               </div>
             )}
-            <p className="text-sm leading-6 text-gray-300">{introduction.description}</p>
+            <p className="text-sm leading-6 text-gray-300">{program.introduction.description}</p>
             <div className="rounded-xl bg-white/5 p-5">
               <p className="text-sm font-medium">Practice</p>
-              <p className="mt-2 text-sm leading-6 text-gray-300">{introduction.practice}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-300">{program.introduction.practice}</p>
             </div>
           </div>
         </section>
