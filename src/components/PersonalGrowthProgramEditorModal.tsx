@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { X } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { uploadToB2 } from '../lib/b2Upload';
 import { supabase } from '../lib/supabase';
 import type { PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
+import { toYouTubeContentUrl } from '../lib/masterclassVideo';
 
 type ProgramKind = 'workshop' | 'mentorship';
 
@@ -12,6 +13,24 @@ interface PersonalGrowthProgramEditorModalProps {
   blueprint: PersonalGrowthBlueprint;
   onClose: () => void;
   onSaved: () => void;
+}
+
+function VideoLinkField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const trimmed = value.trim();
+  const isYouTube = Boolean(trimmed && toYouTubeContentUrl(trimmed));
+  return (
+    <div className="mt-3 space-y-2">
+      <label className="block space-y-2 text-xs text-gray-300">Video link
+        <input type="url" value={value} placeholder="https://www.youtube.com/watch?v=..." onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-2 text-sm text-white" />
+      </label>
+      {trimmed.startsWith('https://') && (
+        <a href={trimmed} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 break-all text-xs text-sky-300 hover:underline"><ExternalLink className="h-3 w-3 shrink-0" />{trimmed}</a>
+      )}
+      {trimmed && (isYouTube
+        ? <p className="text-xs text-emerald-300">YouTube video ready</p>
+        : <p className="text-xs text-rose-300">Use a YouTube link that starts with https://</p>)}
+    </div>
+  );
 }
 
 export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onClose, onSaved }: PersonalGrowthProgramEditorModalProps) {
@@ -26,6 +45,8 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
   const [locationType, setLocationType] = useState<'online' | 'in-person' | 'hybrid'>('online');
   const [locationDetails, setLocationDetails] = useState('');
   const [capacity, setCapacity] = useState('');
+  const [introVideoUrl, setIntroVideoUrl] = useState(blueprint.curriculum.introduction?.video_url ?? '');
+  const [lessonVideoUrls, setLessonVideoUrls] = useState(blueprint.curriculum.lessons.map((lesson) => lesson.video_url ?? ''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +65,12 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
       return;
     }
 
+    const videoUrls = [introVideoUrl, ...lessonVideoUrls].map((url) => url.trim());
+    if (videoUrls.some((url) => url && !toYouTubeContentUrl(url))) {
+      setError('Each video must be a YouTube link that starts with https://.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -55,6 +82,11 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
       }
       if (!finalThumbnailUrl) throw new Error('A program thumbnail is required.');
 
+      const curriculum = {
+        ...blueprint.curriculum,
+        introduction: blueprint.curriculum.introduction && { ...blueprint.curriculum.introduction, video_url: introVideoUrl.trim() },
+        lessons: blueprint.curriculum.lessons.map((lesson, index) => ({ ...lesson, video_url: lessonVideoUrls[index].trim() || undefined })),
+      };
       const commonProgram = {
         created_by: user.id,
         blueprint_id: blueprint.id,
@@ -70,7 +102,7 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
         features: blueprint.features,
         prerequisites: blueprint.prerequisites,
         target_audience: blueprint.target_audience,
-        curriculum: blueprint.curriculum,
+        curriculum,
         price: 0,
         currency: 'UGX',
         status: 'published',
@@ -126,7 +158,7 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
                 <p className="text-sm font-medium text-white">Introduction: {blueprint.curriculum.introduction.title}</p>
                 <p className="mt-1 text-sm leading-5 text-gray-300">{blueprint.curriculum.introduction.description}</p>
                 <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {blueprint.curriculum.introduction.practice}</p>
-                <a href={blueprint.curriculum.introduction.video_url} target="_blank" rel="noreferrer" className="mt-2 block break-all text-xs text-sky-300 underline underline-offset-4">Video: {blueprint.curriculum.introduction.video_url}</a>
+                <VideoLinkField value={introVideoUrl} onChange={setIntroVideoUrl} />
               </div>
             )}
             <ol className="mt-3 space-y-3">
@@ -135,9 +167,7 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
                   <p className="text-sm font-medium text-white">{index + 1}. {lesson.title} <span className="ml-2 text-xs font-normal text-gray-400">{lesson.duration}</span></p>
                   <p className="mt-1 text-sm leading-5 text-gray-300">{lesson.description}</p>
                   <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {lesson.practice}</p>
-                  {lesson.video_url && (
-                    <a href={lesson.video_url} target="_blank" rel="noreferrer" className="mt-2 block break-all text-xs text-sky-300 underline underline-offset-4">Video: {lesson.video_url}</a>
-                  )}
+                  <VideoLinkField value={lessonVideoUrls[index]} onChange={(value) => setLessonVideoUrls((urls) => urls.map((url, position) => (position === index ? value : url)))} />
                 </li>
               ))}
             </ol>
