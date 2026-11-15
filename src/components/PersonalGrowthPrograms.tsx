@@ -3,6 +3,7 @@ import { ArrowRight, Award, BookOpen, Briefcase, CalendarCheck, CalendarDays, Ch
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { toYouTubeContentUrl } from '../lib/masterclassVideo';
 import { PERSONAL_GROWTH_BLUEPRINTS, type PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
 
 type ProgramKind = 'workshops' | 'mentorship';
@@ -231,6 +232,10 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
               const myApplication = applications.find((application) => application.program_id === program.id && application.user_id === user?.id);
               const programApplications = applications.filter((application) => application.program_id === program.id && program.created_by === user?.id);
               const joinLink = program.location_details && /^https?:\/\//i.test(program.location_details.trim()) ? program.location_details.trim() : null;
+              const talks = (program.curriculum?.resources || []).flatMap((resource) => {
+                const embedUrl = toYouTubeContentUrl(resource.url);
+                return embedUrl ? [{ title: resource.title, embedUrl }] : [];
+              });
               return (
                 <article key={program.id} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
                   <div className="aspect-video bg-slate-800">
@@ -292,6 +297,19 @@ export default function PersonalGrowthPrograms({ kind, category, searchQuery, re
                           <p>Details: {program.location_details}</p>
                         ) : (
                           <p>Joining details have not been added yet. Check this card again before the session starts.</p>
+                        )}
+                        {talks.length > 0 && (
+                          <div className="space-y-3">
+                            <p className="font-semibold">Watch the talks</p>
+                            {talks.map((talk) => (
+                              <div key={talk.embedUrl} className="space-y-2">
+                                <p className="text-xs text-emerald-100/80">{talk.title}</p>
+                                <div className="aspect-video overflow-hidden rounded-lg bg-black">
+                                  <iframe src={talk.embedUrl} title={talk.title} loading="lazy" className="h-full w-full" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                         <p className="text-xs text-emerald-100/70">Open View session plan above to see what each session covers.</p>
                       </div>
