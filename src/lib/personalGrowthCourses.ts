@@ -17,6 +17,7 @@ export interface CourseResource {
 
 export interface CourseCurriculum {
   version: 1;
+  introduction?: { title: string; description: string; practice: string; video_url: string };
   lessons: CourseLesson[];
   resources: CourseResource[];
 }
@@ -35,7 +36,6 @@ export interface PersonalGrowthBlueprint {
   target_audience: string;
   thumbnail_url: string;
   intro_video_url?: string;
-  introduction?: { title: string; description: string; practice: string; video_url: string };
   curriculum: CourseCurriculum;
 }
 
@@ -623,76 +623,6 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
           duration: '35 min',
           description: 'A sustainable routine is more useful than an occasional long session. Combine a brief pause, one attention practice, and a short reflection. Plan an easier version for busy or difficult days. If stress is intense or persistent, speak with a qualified professional.',
           practice: 'Write a three-minute routine with a cue, a practice, and a reflection question. Also write your easier version for busy or difficult days.',
-        },
-      ],
-    },
-  },
-  {
-    id: 'courage-and-persistence-for-growth',
-    title: 'Courage to Grow: Honesty, Persistence & Lasting Habits',
-    track: 'Courage & persistence',
-    learning_format: 'Guided class',
-    description: 'A guided class on the courage and persistence that personal growth requires. Learners begin with an intro talk on vulnerability, examine common self-improvement pitfalls, explore passion and perseverance, and turn effort into repeatable habits. Videos are linked from YouTube and remain the property of their creators. The class is educational and is not a substitute for professional support.',
-    duration: '5 sessions · approximately 3 hours',
-    level: 'Beginner',
-    learning_outcomes: [
-      'Describe how vulnerability and honesty support meaningful growth.',
-      'Identify common self-improvement pressures and choose growth goals for the right reasons.',
-      'Distinguish productive persistence from rigid effort that ignores feedback.',
-      'Turn a long-term interest into a routine with a minimum version and a review point.',
-    ],
-    features: ['Five guided sessions', 'Linked expert talks', 'Growth plan worksheet'],
-    prerequisites: 'No prior experience required. Bring a notebook or digital journal and one area of your life you want to develop.',
-    target_audience: 'Learners who want to grow steadily and honestly, especially when progress feels hard to sustain.',
-    thumbnail_url: 'https://i.ytimg.com/vi/iCvmsMzlF7o/hqdefault.jpg',
-    intro_video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
-    introduction: {
-      title: 'Introduction: The power of vulnerability',
-      video_url: 'https://www.youtube.com/watch?v=iCvmsMzlF7o',
-      description: 'Begin with Brené Brown on why honesty and vulnerability are part of growth. Notice where you feel resistance, and carry that question into the sessions that follow.',
-      practice: 'Write one area of your life you want to develop and one reason you feel reluctant to be honest about it.',
-    },
-    curriculum: {
-      version: 1,
-      resources: [
-        motivationReference,
-        goalPlanningReference,
-      ],
-      lessons: [
-        {
-          title: 'Self-improvement without the pressure',
-          video_url: 'https://www.youtube.com/watch?v=wljRiAofFJ8',
-          duration: '30 min',
-          description: 'Examine common pitfalls of self-improvement, such as chasing an idealized self, comparing yourself with others, and treating growth as a constant demand. Watch the talk, then decide which parts of growth you want to keep and which create pressure without value.',
-          practice: 'Write two growth goals you pursue out of pressure and one you pursue out of genuine interest. Note how each one affects your energy over a week.',
-        },
-        {
-          title: 'Passion and perseverance over time',
-          video_url: 'https://www.youtube.com/watch?v=H14bBuluwB8',
-          duration: '35 min',
-          description: 'Look at the difference between short bursts of effort and sustained interest over years. Watch the talk, then distinguish persistence on a goal you value from rigid effort that ignores feedback.',
-          practice: 'Pick one long-term interest. Write what has kept your interest over the past year and one sign that would tell you it is time to change direction.',
-        },
-        {
-          title: 'Turning effort into a lasting habit',
-          video_url: 'https://www.youtube.com/watch?v=1TQ4gezRQh4',
-          duration: '35 min',
-          description: 'Translate perseverance into everyday routines by making effort repeatable, connecting it to purpose, and noticing when a plan needs adjusting rather than abandoning. Watch the interview, then consider which habit could support your chosen interest.',
-          practice: 'Design a weekly routine for your chosen interest with a fixed time, a minimum version for hard weeks, and a check-in on the last day of the week.',
-        },
-        {
-          title: 'The courage to be honest about the hard parts',
-          video_url: 'https://www.youtube.com/watch?v=QijH4UAqGD8',
-          duration: '35 min',
-          description: 'Growth often requires admitting what is uncomfortable: a habit you avoid, feedback you have not asked for, or a belief that holds you back. Revisit the intro talk on vulnerability, watch Luvvie Ajayi Jones on speaking hard truths, then practice naming the difficulty clearly and without shame.',
-          practice: 'Write one uncomfortable truth about your growth area and one small, honest step you can take this week. Share it with one trusted person if that feels safe.',
-        },
-        {
-          title: 'Integrate and plan your next cycle',
-          video_url: 'https://www.youtube.com/watch?v=_X0mgOOSpLU',
-          duration: '35 min',
-          description: 'Watch Carol Dweck on the growth mindset, then bring the course together by reviewing your chosen interest, routine, honest reflections, and the sources of pressure you noticed. Decide how you will continue after the course, including when you will review progress and what support you will ask for.',
-          practice: 'Complete a one-page growth plan with your focus area, routine, one courage practice, a support person, and a review date four weeks from now.',
         },
       ],
     },
