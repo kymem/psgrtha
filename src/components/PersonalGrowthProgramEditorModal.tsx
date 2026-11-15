@@ -119,14 +119,25 @@ export default function PersonalGrowthProgramEditorModal({ kind, blueprint, onCl
           <label className="mt-3 block space-y-2 text-sm text-gray-300">Program title<input required value={title} onChange={(event) => setTitle(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
           <label className="mt-3 block space-y-2 text-sm text-gray-300">Program description<textarea required rows={4} value={description} onChange={(event) => setDescription(event.target.value)} className="w-full rounded-lg border border-gray-700 bg-gray-900 p-3 text-white" /></label>
           <p className="mt-3 text-sm text-gray-400">{blueprint.duration} · {blueprint.curriculum.lessons.length} sessions</p>
-          <details className="mt-4 border-t border-white/10 pt-3">
+          <details open className="mt-4 border-t border-white/10 pt-3">
             <summary className="cursor-pointer text-sm font-medium text-rose-200">Review session plan</summary>
+            {blueprint.curriculum.introduction && (
+              <div className="mt-3 rounded-lg bg-white/[0.04] p-3">
+                <p className="text-sm font-medium text-white">Introduction: {blueprint.curriculum.introduction.title}</p>
+                <p className="mt-1 text-sm leading-5 text-gray-300">{blueprint.curriculum.introduction.description}</p>
+                <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {blueprint.curriculum.introduction.practice}</p>
+                <a href={blueprint.curriculum.introduction.video_url} target="_blank" rel="noreferrer" className="mt-2 block break-all text-xs text-sky-300 underline underline-offset-4">Video: {blueprint.curriculum.introduction.video_url}</a>
+              </div>
+            )}
             <ol className="mt-3 space-y-3">
               {blueprint.curriculum.lessons.map((lesson, index) => (
                 <li key={lesson.title} className="rounded-lg bg-white/[0.04] p-3">
                   <p className="text-sm font-medium text-white">{index + 1}. {lesson.title} <span className="ml-2 text-xs font-normal text-gray-400">{lesson.duration}</span></p>
                   <p className="mt-1 text-sm leading-5 text-gray-300">{lesson.description}</p>
                   <p className="mt-2 text-xs leading-5 text-purple-200">Practice: {lesson.practice}</p>
+                  {lesson.video_url && (
+                    <a href={lesson.video_url} target="_blank" rel="noreferrer" className="mt-2 block break-all text-xs text-sky-300 underline underline-offset-4">Video: {lesson.video_url}</a>
+                  )}
                 </li>
               ))}
             </ol>
