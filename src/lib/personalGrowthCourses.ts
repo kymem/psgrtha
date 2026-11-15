@@ -682,14 +682,16 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
         },
         {
           title: 'The courage to be honest about the hard parts',
+          video_url: 'https://www.youtube.com/watch?v=QijH4UAqGD8',
           duration: '35 min',
-          description: 'Growth often requires admitting what is uncomfortable: a habit you avoid, feedback you have not asked for, or a belief that holds you back. Revisit the intro talk on vulnerability, then practice naming the difficulty clearly and without shame.',
+          description: 'Growth often requires admitting what is uncomfortable: a habit you avoid, feedback you have not asked for, or a belief that holds you back. Revisit the intro talk on vulnerability, watch Luvvie Ajayi Jones on speaking hard truths, then practice naming the difficulty clearly and without shame.',
           practice: 'Write one uncomfortable truth about your growth area and one small, honest step you can take this week. Share it with one trusted person if that feels safe.',
         },
         {
           title: 'Integrate and plan your next cycle',
+          video_url: 'https://www.youtube.com/watch?v=_X0mgOOSpLU',
           duration: '35 min',
-          description: 'Bring the course together by reviewing your chosen interest, routine, honest reflections, and the sources of pressure you noticed. Decide how you will continue after the course, including when you will review progress and what support you will ask for.',
+          description: 'Watch Carol Dweck on the growth mindset, then bring the course together by reviewing your chosen interest, routine, honest reflections, and the sources of pressure you noticed. Decide how you will continue after the course, including when you will review progress and what support you will ask for.',
           practice: 'Complete a one-page growth plan with your focus area, routine, one courage practice, a support person, and a review date four weeks from now.',
         },
       ],
