@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin } from 'lucide-reac
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { isYouTubeContentUrl, toYouTubeContentUrl } from '../lib/masterclassVideo';
+import { isEmbedContentUrl, toEmbedContentUrl } from '../lib/masterclassVideo';
 import MuxPlayer from '../components/MuxPlayer';
 import type { CourseCurriculum } from '../lib/personalGrowthCourses';
 
@@ -33,9 +33,9 @@ type ClassItem = {
 
 function toPlayback(source: { content_url?: string; video_url?: string }) {
   const playbackId = source.content_url?.match(/stream\.mux\.com\/([a-zA-Z0-9]+)/)?.[1] ?? null;
-  const embedUrl = source.content_url && isYouTubeContentUrl(source.content_url)
+  const embedUrl = source.content_url && isEmbedContentUrl(source.content_url)
     ? source.content_url
-    : source.video_url ? toYouTubeContentUrl(source.video_url) : null;
+    : source.video_url ? toEmbedContentUrl(source.video_url) : null;
   return { embedUrl, playbackId };
 }
 
@@ -116,14 +116,14 @@ export default function PersonalGrowthClass() {
     ...toPlayback(lesson),
     videoUrl: lesson.video_url,
   }));
-  const talkResources = (program.curriculum?.resources || []).filter((resource) => toYouTubeContentUrl(resource.url));
+  const talkResources = (program.curriculum?.resources || []).filter((resource) => toEmbedContentUrl(resource.url));
   const talks: ClassItem[] = talkResources.map((resource) => ({
     kind: 'talk',
     title: resource.title,
-    embedUrl: toYouTubeContentUrl(resource.url),
+    embedUrl: toEmbedContentUrl(resource.url),
     videoUrl: resource.url,
   }));
-  const furtherReading = (program.curriculum?.resources || []).filter((resource) => !toYouTubeContentUrl(resource.url));
+  const furtherReading = (program.curriculum?.resources || []).filter((resource) => !toEmbedContentUrl(resource.url));
   const items = [...sessions, ...talks];
 
   const header = (

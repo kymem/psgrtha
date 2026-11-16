@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, ExternalLink, Loader, X } from 'lucide-react';
 import VideoUploadWithMuxForMasterclass from './VideoUploadWithMuxForMasterclass';
-import { ingestVideoUrl, toYouTubeContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
+import { ingestVideoUrl, toEmbedContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 
 interface MasterclassVideoSourceProps {
   userId: string;
@@ -53,11 +53,11 @@ export default function MasterclassVideoSource({
       return;
     }
 
-    const youtubeContentUrl = toYouTubeContentUrl(parsed.toString());
-    if (youtubeContentUrl) {
+    const embedContentUrl = toEmbedContentUrl(parsed.toString());
+    if (embedContentUrl) {
       setError(null);
       setIsUrlReady(true);
-      onReady({ kind: 'youtube', contentUrl: youtubeContentUrl });
+      onReady({ kind: 'embed', contentUrl: embedContentUrl });
       return;
     }
 
@@ -123,7 +123,7 @@ export default function MasterclassVideoSource({
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-gray-400">
-            Paste a direct https link to a video file (for example, one stored in B2) to send it to Mux, or a YouTube link to embed it. Nothing is processed until you click Process.
+            Paste a direct https link to a video file (for example, one stored in B2) to send it to Mux, or a YouTube or ted.com talk link to embed it. Nothing is processed until you click Process.
           </p>
           <div className="flex gap-2">
             <input

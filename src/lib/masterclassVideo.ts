@@ -2,20 +2,39 @@ import { supabase } from './supabase';
 
 export type ProcessedVideo =
   | { kind: 'mux'; playbackId: string; videoUploadId: string; duration?: string }
-  | { kind: 'youtube'; contentUrl: string };
+  | { kind: 'embed'; contentUrl: string };
 
 const MAX_STATUS_CHECKS = 300;
 const STATUS_CHECK_INTERVAL_MS = 2000;
 const YOUTUBE_EMBED_PREFIX = 'https://www.youtube-nocookie.com/embed/';
+const TED_EMBED_PREFIX = 'https://embed.ted.com/talks/';
 
 export const toMuxStreamUrl = (playbackId: string) => `https://stream.mux.com/${playbackId}.m3u8`;
 
 export const toContentUrl = (video: ProcessedVideo) =>
   video.kind === 'mux' ? toMuxStreamUrl(video.playbackId) : video.contentUrl;
 
-export const isYouTubeContentUrl = (contentUrl: string) => contentUrl.startsWith(YOUTUBE_EMBED_PREFIX);
+export const isEmbedContentUrl = (contentUrl: string) =>
+  contentUrl.startsWith(YOUTUBE_EMBED_PREFIX) || contentUrl.startsWith(TED_EMBED_PREFIX);
 
-export function toYouTubeContentUrl(rawUrl: string): string | null {
+export function toEmbedContentUrl(rawUrl: string): string | null {
+  return toYouTubeEmbedUrl(rawUrl) ?? toTedEmbedUrl(rawUrl);
+}
+
+function toTedEmbedUrl(rawUrl: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl.trim());
+  } catch {
+    return null;
+  }
+
+  if (parsed.hostname.replace(/^www\./, '') !== 'ted.com') return null;
+  const match = parsed.pathname.match(/^\/talks\/([a-z0-9_]+)\/?$/);
+  return match ? `${TED_EMBED_PREFIX}${match[1]}` : null;
+}
+
+function toYouTubeEmbedUrl(rawUrl: string): string | null {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl.trim());

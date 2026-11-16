@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import MuxPlayer from './MuxPlayer';
-import { isYouTubeContentUrl } from '../lib/masterclassVideo';
+import { isEmbedContentUrl } from '../lib/masterclassVideo';
 
 interface InlineVideoPlayerProps {
   isPlaying: boolean;
@@ -52,7 +52,7 @@ export default function InlineVideoPlayer({
       </button>
 
       {/* Video Player */}
-      {isYouTubeContentUrl(content.content_url) ? (
+      {isEmbedContentUrl(content.content_url) ? (
         <iframe
           src={content.content_url}
           title={content.title}

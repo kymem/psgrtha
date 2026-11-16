@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { uploadToB2 } from '../lib/b2Upload';
 import { supabase } from '../lib/supabase';
 import type { PersonalGrowthBlueprint } from '../lib/personalGrowthCourses';
-import { toMuxStreamUrl, toYouTubeContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
+import { toMuxStreamUrl, toEmbedContentUrl, type ProcessedVideo } from '../lib/masterclassVideo';
 import MasterclassVideoSource from './MasterclassVideoSource';
 
 type ProgramKind = 'workshop' | 'mentorship';
@@ -19,7 +19,7 @@ interface PersonalGrowthProgramEditorModalProps {
 type VideoSource = { content_url?: string; video_upload_id?: string };
 
 const toVideoSource = (item: { video_url?: string; content_url?: string; video_upload_id?: string }): VideoSource => ({
-  content_url: item.content_url ?? (item.video_url ? (toYouTubeContentUrl(item.video_url) ?? undefined) : undefined),
+  content_url: item.content_url ?? (item.video_url ? (toEmbedContentUrl(item.video_url) ?? undefined) : undefined),
   video_upload_id: item.video_upload_id,
 });
 
