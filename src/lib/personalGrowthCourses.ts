@@ -1710,8 +1710,8 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     title: 'Overcoming Perfectionism: Aim High Without Freezing',
     track: 'Self-improvement & self-compassion',
     learning_format: 'Applied workshop',
-    description: 'A practical workshop on loosening the grip of perfectionism so you can aim high, finish work, and stop treating every mistake as proof of failure. Learners begin with an intro talk on the perfection detox, then complete three sessions that combine talks with a small, deliberate practice.',
-    duration: '3 sessions · approximately 1.5 hours',
+    description: 'A practical workshop on loosening the grip of perfectionism so you can aim high, finish work, and stop treating every mistake as proof of failure. Learners begin with an intro talk on the perfection detox, then complete four sessions that combine talks with a small, deliberate practice.',
+    duration: '4 sessions · approximately 2 hours',
     level: 'Beginner',
     learning_outcomes: [
       'Tell healthy high standards apart from perfectionist demands.',
@@ -1720,7 +1720,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
     ],
     features: [
       'Intro talk on the perfection detox',
-      'Three sessions with linked TED and TEDx talks',
+      'Four sessions with linked TED and TEDx talks',
       'A finish-it practice for everyday work',
     ],
     prerequisites: 'No prior experience required. Choose one task you have been polishing for too long.',
@@ -1757,6 +1757,13 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
           duration: '15 min',
           description: 'Dr Amna Shabbir’s TEDxRaleigh talk argues that perfectionism is a widespread problem with a practical answer. Use it to choose one change you can make to your standards.',
           practice: 'Take the task from your first session and set a finish time. Stop at that time, even if you would like to keep refining it.',
+        },
+        {
+          title: 'How good is good enough?',
+          video_url: 'https://www.youtube.com/watch?v=eEurlerP55I',
+          duration: '15 min',
+          description: 'Sean Zhou’s TEDxYouth@FHS talk asks how good is good enough and describes how perfectionism shapes everyday decisions. Use it to define a standard that is high enough without being impossible.',
+          practice: 'Choose one task from this week. Write the minimum standard that would make it complete, then finish it to that standard before you start polishing.',
         },
       ],
     },
