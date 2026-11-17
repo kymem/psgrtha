@@ -3,6 +3,7 @@ import { X, Trash2, Upload, LinkIcon, AlertCircle, Loader } from 'lucide-react';
 import { uploadToB2 } from '../lib/b2Upload';
 import { useVideoDuration } from '../hooks/useVideoDuration';
 import { extractDuration } from '../lib/getDuration';
+import { getAccessToken } from '../lib/masterclassVideo';
 import { supabase } from '../lib/supabase';
 
 interface EditMasterclassContentModalProps {
@@ -247,12 +248,9 @@ export default function EditMasterclassContentModal({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${await getAccessToken()}`,
           },
-          body: JSON.stringify({
-            filename,
-            userId
-          }),
+          body: JSON.stringify({ filename }),
         }
       );
 

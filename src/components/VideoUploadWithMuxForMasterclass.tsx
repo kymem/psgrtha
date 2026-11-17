@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { X, Film, Loader, Check, AlertCircle, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { extractDuration } from '../lib/getDuration';
+import { getAccessToken } from '../lib/masterclassVideo';
 
 interface VideoUploadWithMuxForMasterclassProps {
   userId: string;
@@ -113,12 +114,9 @@ export default function VideoUploadWithMuxForMasterclass({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${await getAccessToken()}`,
           },
-          body: JSON.stringify({
-            filename,
-            userId
-          }),
+          body: JSON.stringify({ filename }),
         }
       );
 

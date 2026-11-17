@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import MuxPlayer from './MuxPlayer';
+import { isEmbedContentUrl } from '../lib/masterclassVideo';
 
 interface InlineVideoPlayerProps {
   isPlaying: boolean;
@@ -51,7 +52,15 @@ export default function InlineVideoPlayer({
       </button>
 
       {/* Video Player */}
-      {playbackId ? (
+      {isEmbedContentUrl(content.content_url) ? (
+        <iframe
+          src={content.content_url}
+          title={content.title}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : playbackId ? (
         <MuxPlayer
           playbackId={playbackId}
           thumbnailUrl={content.thumbnail_url}
