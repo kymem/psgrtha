@@ -742,11 +742,11 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
       ],
       lessons: [
         {
-          title: 'Replace self-criticism with self-compassion',
-          video_url: 'https://www.youtube.com/watch?v=IvtZBUSplr4',
+          title: 'Separate your worth from how a task turns out',
+          video_url: 'https://www.youtube.com/watch?v=52lZmIafep4',
           duration: '30 min',
-          description: 'Kristin Neff contrasts self-esteem with self-compassion and explains why treating yourself kindly can be more sustaining than evaluating yourself as good or bad. Harsh self-judgment after a delay can make the next step feel even more threatening, so watch the talk and notice how you speak to yourself when a task slips.',
-          practice: 'The next time you postpone something, write the sentence you usually say to yourself, then rewrite it the way you would speak to a good friend.',
+          description: 'Nic Voge’s TEDxPrincetonU talk, Self Worth Theory, explains why many people procrastinate: they treat their performance, ability, and worth as one equation. Watch it to notice where that equation shows up when a task slips, and what you protect by putting the task off.',
+          practice: 'The next time you postpone something, write the equation you are using to judge yourself, then write one sentence that separates your worth from that task’s result.',
         },
         {
           title: 'Find the reason behind the task',
