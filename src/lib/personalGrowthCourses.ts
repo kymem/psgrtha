@@ -736,7 +736,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
         goalPlanningReference,
         {
           title: 'TED Talk: Inside the mind of a master procrastinator (Tim Urban)',
-          url: 'https://www.ted.com/talks/tim_urban_inside_the_mind_of_a_master_procrastinator',
+          url: 'https://www.youtube.com/watch?v=arj7oStGLkU',
           type: 'reference' as const,
         },
       ],
@@ -883,7 +883,7 @@ export const PERSONAL_GROWTH_BLUEPRINTS: PersonalGrowthBlueprint[] = [
         lifeSkillsReference,
         {
           title: 'TED Talk: How to speak so that people want to listen (Julian Treasure)',
-          url: 'https://www.ted.com/talks/julian_treasure_how_to_speak_so_that_people_want_to_listen',
+          url: 'https://www.youtube.com/watch?v=eIho2S0ZahI',
           type: 'reference' as const,
         },
       ],
